@@ -101,11 +101,11 @@ export function FarmChat() {
         title="채팅"
         subtitle={tab === 'direct' ? `1:1 대화 ${threads.length}건 · 미읽음 ${unreadCount}` : `공지 ${announcements.length}건`}
       />
-      <div className="px-4 py-4 md:px-6 max-w-5xl mx-auto">
-        <div className="flex gap-2 mb-4">
+      <div className="px-4 py-4 md:px-6 max-w-5xl mx-auto w-full min-w-0 overflow-x-hidden">
+        <div className="flex gap-2 mb-4 min-w-0">
           <button
             onClick={() => setTab('direct')}
-            className={`flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium transition-colors ${
+            className={`flex flex-1 min-w-0 items-center justify-center gap-1.5 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors sm:gap-2 sm:px-4 ${
               tab === 'direct'
                 ? 'bg-primary text-white'
                 : 'bg-white text-gray-600 border border-gray-200 hover:border-primary'
@@ -119,7 +119,7 @@ export function FarmChat() {
           </button>
           <button
             onClick={() => setTab('announcements')}
-            className={`flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium transition-colors ${
+            className={`flex flex-1 min-w-0 items-center justify-center gap-1.5 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors sm:gap-2 sm:px-4 ${
               tab === 'announcements'
                 ? 'bg-primary text-white'
                 : 'bg-white text-gray-600 border border-gray-200 hover:border-primary'
@@ -187,30 +187,30 @@ export function FarmChat() {
                     </Badge>
                     <span className="text-xs text-muted shrink-0">{announcement.createdAt}</span>
                   </div>
-                  <h4 className="font-semibold text-gray-900">{announcement.title}</h4>
-                  <p className="mt-2 text-sm text-gray-700 leading-relaxed">{announcement.content}</p>
+                  <h4 className="break-words font-semibold text-gray-900">{announcement.title}</h4>
+                  <p className="mt-2 break-words text-sm text-gray-700 leading-relaxed">{announcement.content}</p>
                   <p className="mt-3 text-xs text-muted">{announcement.recipientCount}명에게 발송됨</p>
                 </Card>
               ))}
             </div>
           </div>
         ) : (
-          <div className="grid gap-4 lg:grid-cols-5">
-            <div className="lg:col-span-2 space-y-2">
+          <div className="grid min-w-0 gap-4 lg:grid-cols-5">
+            <div className="min-w-0 space-y-2 lg:col-span-2">
               {threads.map((thread) => (
                 <Card
                   key={thread.id}
                   onClick={() => openThread(thread)}
-                  className={selectedThread?.id === thread.id ? 'ring-2 ring-primary' : ''}
+                  className={selectedThread?.id === thread.id ? 'ring-2 ring-inset ring-primary' : ''}
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="flex min-w-0 items-center gap-3">
                     <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary-light text-primary font-bold text-sm shrink-0">
                       {thread.customerName[0]}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between gap-2">
-                        <p className="font-semibold text-gray-900">{thread.customerName}</p>
-                        <span className="text-[10px] text-muted shrink-0">{thread.lastMessageAt}</span>
+                      <div className="flex min-w-0 items-center justify-between gap-2">
+                        <p className="min-w-0 truncate font-semibold text-gray-900">{thread.customerName}</p>
+                        <span className="max-w-[45%] truncate text-[10px] text-muted shrink-0">{thread.lastMessageAt}</span>
                       </div>
                       <p className="text-xs text-muted truncate">{thread.lastMessage}</p>
                     </div>
@@ -224,27 +224,27 @@ export function FarmChat() {
               ))}
             </div>
 
-            <div className="lg:col-span-3">
-              <Card className="flex flex-col min-h-[420px]">
+            <div className="min-w-0 lg:col-span-3">
+              <Card className="flex min-w-0 flex-col min-h-[420px] overflow-hidden">
                 <div className="border-b border-gray-100 pb-3 mb-3">
                   <h3 className="font-bold text-gray-900">{selectedThread.customerName}</h3>
                   <p className="text-xs text-muted">1:1 상담</p>
                 </div>
 
-                <div className="flex-1 space-y-3 overflow-y-auto max-h-80 mb-4">
+                <div className="mb-4 max-h-80 min-w-0 flex-1 space-y-3 overflow-y-auto overflow-x-hidden">
                   {selectedThread.messages.map((message) => (
                     <div
                       key={message.id}
-                      className={`flex ${message.sender === 'farm' ? 'justify-end' : 'justify-start'}`}
+                      className={`flex min-w-0 ${message.sender === 'farm' ? 'justify-end' : 'justify-start'}`}
                     >
                       <div
-                        className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm ${
+                        className={`max-w-[80%] min-w-0 break-words rounded-2xl px-4 py-2.5 text-sm ${
                           message.sender === 'farm'
                             ? 'bg-primary text-white rounded-br-md'
                             : 'bg-gray-100 text-gray-900 rounded-bl-md'
                         }`}
                       >
-                        <p>{message.content}</p>
+                        <p className="break-words">{message.content}</p>
                         <p
                           className={`mt-1 text-[10px] ${
                             message.sender === 'farm' ? 'text-white/70' : 'text-muted'
@@ -257,16 +257,16 @@ export function FarmChat() {
                   ))}
                 </div>
 
-                <div className="flex gap-2">
+                <div className="flex min-w-0 gap-2">
                   <input
                     type="text"
                     value={draft}
                     onChange={(e) => setDraft(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
                     placeholder="메시지를 입력하세요"
-                    className="flex-1 rounded-xl border border-gray-200 px-4 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
+                    className="min-w-0 flex-1 rounded-xl border border-gray-200 px-4 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
                   />
-                  <Button onClick={handleSendMessage} disabled={!draft.trim()}>
+                  <Button className="shrink-0" onClick={handleSendMessage} disabled={!draft.trim()}>
                     <Send className="h-4 w-4" />
                   </Button>
                 </div>
