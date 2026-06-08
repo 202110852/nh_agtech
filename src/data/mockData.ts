@@ -24,7 +24,36 @@ export interface Customer {
   totalSpent: number
   lastOrderDate: string
   memo: string
+  isRegular: boolean
   purchaseHistory: { date: string; product: string; amount: number }[]
+}
+
+export type AnnouncementType = 'delay' | 'general'
+
+export interface Announcement {
+  id: string
+  title: string
+  content: string
+  type: AnnouncementType
+  createdAt: string
+  recipientCount: number
+}
+
+export interface ChatMessage {
+  id: string
+  sender: 'farm' | 'customer'
+  content: string
+  timestamp: string
+}
+
+export interface ChatThread {
+  id: string
+  customerId: string
+  customerName: string
+  lastMessage: string
+  lastMessageAt: string
+  unread: number
+  messages: ChatMessage[]
 }
 
 export interface Order {
@@ -39,6 +68,7 @@ export interface Order {
   orderDate: string
   trackingNumber?: string
   paymentMethod: PaymentMethod
+  memo?: string
 }
 
 export interface TrackingStep {
@@ -130,6 +160,7 @@ export const orders: Order[] = [
     status: 'received',
     orderDate: '2025.06.08 09:15',
     paymentMethod: 'card',
+    memo: '문 앞에 놓아주세요. 벨 누르지 말아주세요.',
   },
   {
     id: 'o2',
@@ -142,6 +173,7 @@ export const orders: Order[] = [
     status: 'packing',
     orderDate: '2025.06.08 08:30',
     paymentMethod: 'local',
+    memo: '영수증 지역화폐용으로 부탁드립니다.',
   },
   {
     id: 'o3',
@@ -193,6 +225,7 @@ export const orders: Order[] = [
     status: 'received',
     orderDate: '2025.06.08 10:00',
     paymentMethod: 'local',
+    memo: '포도 알이 큰 것으로 골라주세요.',
   },
 ]
 
@@ -205,6 +238,7 @@ export const customers: Customer[] = [
     totalSpent: 198000,
     lastOrderDate: '2025.06.08',
     memo: '감귤 단골 고객, 매주 주문',
+    isRegular: true,
     purchaseHistory: [
       { date: '2025.06.08', product: '제주 감귤 5kg', amount: 45000 },
       { date: '2025.06.01', product: '제주 감귤 5kg', amount: 45000 },
@@ -219,6 +253,7 @@ export const customers: Customer[] = [
     totalSpent: 102000,
     lastOrderDate: '2025.06.08',
     memo: '지역화폐 사용 선호',
+    isRegular: true,
     purchaseHistory: [
       { date: '2025.06.08', product: '운악산 포도 2kg', amount: 32000 },
       { date: '2025.05.20', product: '제주 감귤 5kg', amount: 45000 },
@@ -232,6 +267,7 @@ export const customers: Customer[] = [
     totalSpent: 76000,
     lastOrderDate: '2025.06.07',
     memo: '',
+    isRegular: false,
     purchaseHistory: [
       { date: '2025.06.07', product: '제주 한라봉 3kg', amount: 38000 },
       { date: '2025.05.15', product: '제주 한라봉 3kg', amount: 38000 },
@@ -245,8 +281,68 @@ export const customers: Customer[] = [
     totalSpent: 45000,
     lastOrderDate: '2025.06.07',
     memo: '신규 고객',
+    isRegular: false,
     purchaseHistory: [
       { date: '2025.06.07', product: '제주 감귤 5kg', amount: 45000 },
+    ],
+  },
+]
+
+export const announcements: Announcement[] = [
+  {
+    id: 'a1',
+    title: '배송 지연 안내',
+    content: '우천으로 인해 6/8 발송 건이 6/9 오전 중 배송될 예정입니다. 불편을 드려 죄송합니다.',
+    type: 'delay',
+    createdAt: '2025.06.08 08:30',
+    recipientCount: 12,
+  },
+  {
+    id: 'a2',
+    title: '한라봉 수확 일정 안내',
+    content: '이번 주 한라봉 수확량이 예상보다 적어 6/10부터 순차 발송됩니다.',
+    type: 'general',
+    createdAt: '2025.06.07 18:00',
+    recipientCount: 28,
+  },
+]
+
+export const chatThreads: ChatThread[] = [
+  {
+    id: 't1',
+    customerId: 'c1',
+    customerName: '이민지',
+    lastMessage: '내일까지 받을 수 있을까요?',
+    lastMessageAt: '2025.06.08 10:42',
+    unread: 1,
+    messages: [
+      { id: 'm1', sender: 'customer', content: '안녕하세요, 오늘 주문한 감귤 배송 일정 문의드립니다.', timestamp: '2025.06.08 10:30' },
+      { id: 'm2', sender: 'farm', content: '안녕하세요! NH 냉장 보관 후 내일 오전 중 배송 예정입니다.', timestamp: '2025.06.08 10:35' },
+      { id: 'm3', sender: 'customer', content: '내일까지 받을 수 있을까요?', timestamp: '2025.06.08 10:42' },
+    ],
+  },
+  {
+    id: 't2',
+    customerId: 'c2',
+    customerName: '박준호',
+    lastMessage: '네, 감사합니다!',
+    lastMessageAt: '2025.06.08 09:15',
+    unread: 0,
+    messages: [
+      { id: 'm4', sender: 'customer', content: '지역화폐로 결제했는데 영수증 발급 가능한가요?', timestamp: '2025.06.08 09:00' },
+      { id: 'm5', sender: 'farm', content: '네, 주문 완료 후 마이페이지에서 전자영수증 확인 가능합니다.', timestamp: '2025.06.08 09:10' },
+      { id: 'm6', sender: 'customer', content: '네, 감사합니다!', timestamp: '2025.06.08 09:15' },
+    ],
+  },
+  {
+    id: 't3',
+    customerId: 'c3',
+    customerName: '최수연',
+    lastMessage: '한라봉 재입고되면 알려주세요.',
+    lastMessageAt: '2025.06.07 16:20',
+    unread: 0,
+    messages: [
+      { id: 'm7', sender: 'customer', content: '한라봉 재입고되면 알려주세요.', timestamp: '2025.06.07 16:20' },
     ],
   },
 ]
@@ -257,6 +353,16 @@ export const dashboardStats = {
   newCustomers: 3,
   monthlyRevenue: 1240000,
 }
+
+export const weeklyOrderTrend = [
+  { label: '6/2', day: '월', orders: 8 },
+  { label: '6/3', day: '화', orders: 11 },
+  { label: '6/4', day: '수', orders: 9 },
+  { label: '6/5', day: '목', orders: 14 },
+  { label: '6/6', day: '금', orders: 10 },
+  { label: '6/7', day: '토', orders: 16 },
+  { label: '6/8', day: '일', orders: 12, today: true },
+]
 
 export const trackingSteps: TrackingStep[] = [
   {
@@ -312,4 +418,8 @@ export function formatPrice(price: number): string {
 
 export function getProductById(id: string): Product | undefined {
   return products.find((p) => p.id === id)
+}
+
+export function getCustomerByPhone(phone: string): Customer | undefined {
+  return customers.find((c) => c.phone === phone)
 }

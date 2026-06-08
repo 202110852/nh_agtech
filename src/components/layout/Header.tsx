@@ -1,5 +1,6 @@
 import { ArrowLeft } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
+import { NavLink, useNavigate } from 'react-router-dom'
+import { useNavContext } from './NavContext'
 
 interface HeaderProps {
   title: string
@@ -11,6 +12,7 @@ interface HeaderProps {
 
 export function Header({ title, subtitle, showBack, backTo, rightElement }: HeaderProps) {
   const navigate = useNavigate()
+  const { mobileSettingsItem } = useNavContext()
 
   const handleBack = () => {
     if (backTo) navigate(backTo)
@@ -33,7 +35,25 @@ export function Header({ title, subtitle, showBack, backTo, rightElement }: Head
           <h1 className="text-lg font-bold text-gray-900 truncate">{title}</h1>
           {subtitle && <p className="text-xs text-muted truncate">{subtitle}</p>}
         </div>
-        {rightElement}
+        <div className="flex items-center gap-1 shrink-0">
+          {rightElement}
+          {mobileSettingsItem && (
+            <NavLink
+              to={mobileSettingsItem.to}
+              className={({ isActive }) =>
+                `md:hidden flex h-9 w-9 items-center justify-center rounded-xl transition-colors ${
+                  isActive ? 'bg-primary-light text-primary' : 'text-gray-500 hover:bg-gray-100'
+                }`
+              }
+              aria-label={mobileSettingsItem.label}
+            >
+              {({ isActive }) => {
+                const Icon = mobileSettingsItem.icon
+                return <Icon className={`h-5 w-5 ${isActive ? 'stroke-[2.5]' : ''}`} />
+              }}
+            </NavLink>
+          )}
+        </div>
       </div>
     </header>
   )

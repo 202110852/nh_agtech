@@ -1,4 +1,4 @@
-import { LayoutDashboard, Package, Settings, Truck, Users } from 'lucide-react'
+import { LayoutDashboard, MessageCircle, Package, Settings, Truck, Users } from 'lucide-react'
 import type { NavItem } from '../components/layout/BottomNav'
 
 export const farmNavItems: NavItem[] = [
@@ -6,5 +6,6 @@ export const farmNavItems: NavItem[] = [
   { to: '/orders', label: '주문', icon: Package },
   { to: '/delivery', label: '배송', icon: Truck },
   { to: '/crm', label: '고객', icon: Users },
+  { to: '/chat', label: '채팅', icon: MessageCircle },
   { to: '/settings', label: '설정', icon: Settings },
 ]

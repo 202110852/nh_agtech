@@ -10,14 +10,14 @@ const plans = [
   {
     id: 'basic',
     name: 'Basic',
-    price: '29,000',
+    price: '50,000',
     features: ['주문·배송 관리', '기본 CRM', '우체국 간편 접수'],
     current: false,
   },
   {
     id: 'pro',
     name: 'NH 연동 Pro',
-    price: '49,000',
+    price: '70,000',
     features: ['Basic 전체 기능', 'NH 콜드체인 연동', '씽씽몰 채널 연동', '익일 배송 최적화'],
     current: true,
   },
@@ -98,10 +98,10 @@ export function FarmSettings() {
         <Card>
           <h4 className="font-semibold text-gray-900 mb-2">NH 연동 혜택</h4>
           <ul className="space-y-2 text-sm text-gray-700">
-            <li>· 수수료 0% 농가 직판 채널 확보</li>
             <li>· NH 기반 신뢰성 있는 판매 채널</li>
-            <li>· 초신선·고품질 이미지 구축</li>
             <li>· 지역화폐 연동으로 수수료 절감</li>
+            <li>· 방문접수 자동화, 운송장 출력</li>
+            <li>· 계약소포 체결, 택배비 지원사업으로 택배비 절감</li>
           </ul>
         </Card>
       </div>

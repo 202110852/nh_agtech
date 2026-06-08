@@ -2,12 +2,11 @@ import { LayoutDashboard, Package, Truck, Users } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { AppShell } from '../../components/layout/AppShell'
 import { Header } from '../../components/layout/Header'
+import { OrderChart } from '../../components/shared/OrderChart'
 import { OrderItem } from '../../components/shared/OrderItem'
-import { Button } from '../../components/ui/Button'
-import { Card } from '../../components/ui/Card'
 import { StatCard } from '../../components/ui/StatCard'
 import { farmNavItems } from '../../config/farmNav'
-import { dashboardStats, farmProfile, formatPrice, orders } from '../../data/mockData'
+import { dashboardStats, farmProfile, formatPrice, orders, weeklyOrderTrend } from '../../data/mockData'
 
 export function FarmDashboard() {
   const navigate = useNavigate()
@@ -27,19 +26,7 @@ export function FarmDashboard() {
           <StatCard label="이번 달 매출" value={formatPrice(dashboardStats.monthlyRevenue)} icon={LayoutDashboard} />
         </div>
 
-        <Card className="bg-primary text-white border-0">
-          <h3 className="font-bold">우체국 택배 간편 사전 접수</h3>
-          <p className="mt-1 text-sm text-white/80">
-            배송 대기 주문을 한 번에 접수하고 운송장을 자동 생성하세요
-          </p>
-          <Button
-            variant="secondary"
-            className="mt-3 !bg-white !text-primary hover:!bg-white/90"
-            onClick={() => navigate('/delivery')}
-          >
-            간편 접수하기
-          </Button>
-        </Card>
+        <OrderChart data={weeklyOrderTrend} />
 
         <section>
           <div className="flex items-center justify-between mb-3">
