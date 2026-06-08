@@ -1,5 +1,6 @@
 import { Leaf } from 'lucide-react'
 import { NavLink } from 'react-router-dom'
+import { BRAND } from '../../config/brand'
 import type { NavItem } from './BottomNav'
 
 interface SidebarProps {
@@ -16,7 +17,7 @@ export function Sidebar({ items, roleLabel }: SidebarProps) {
             <Leaf className="h-5 w-5 text-white" />
           </div>
           <div>
-            <p className="font-bold text-gray-900">스테이블 퓨전</p>
+            <p className="font-bold text-gray-900">{BRAND.serviceName}</p>
             <p className="text-xs text-muted">{roleLabel}</p>
           </div>
         </div>

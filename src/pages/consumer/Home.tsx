@@ -4,6 +4,7 @@ import { AppShell } from '../../components/layout/AppShell'
 import { Header } from '../../components/layout/Header'
 import { ProductCard } from '../../components/shared/ProductCard'
 import { Badge } from '../../components/ui/Badge'
+import { BRAND } from '../../config/brand'
 import { products } from '../../data/mockData'
 
 const navItems = [
@@ -16,7 +17,7 @@ export function ConsumerHome() {
 
   return (
     <AppShell navItems={navItems} roleLabel="소비자">
-      <Header title="스테이블 퓨전" subtitle="농가 직송 신선 농산물" />
+      <Header title={BRAND.serviceName} subtitle={BRAND.tagline} />
       <div className="px-4 py-4 md:px-6 max-w-5xl mx-auto space-y-6">
         <div className="rounded-2xl bg-primary p-5 text-white">
           <div className="flex items-center gap-2 mb-2">
