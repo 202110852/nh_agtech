@@ -1,0 +1,24 @@
+# Farmassi local development
+project_id = "pfysjhabkqwfytzpsbom"
+
+[functions.kakao-login]
+verify_jwt = false
+
+[functions.create-order]
+verify_jwt = true
+
+[functions.confirm-deposit]
+verify_jwt = true
+
+[functions.approve-farm]
+verify_jwt = true
+
+[functions.send-push]
+verify_jwt = true
+
+[functions.kpost-shipment]
+verify_jwt = true
+
+[functions.scrape-deposits]
+verify_jwt = true
+# later: schedule = "*/10 * * * *"

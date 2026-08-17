@@ -1,0 +1,45 @@
+import { CreditCard, Package, Sprout, Truck } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { AppShell } from '../../components/layout/AppShell'
+import { Header } from '../../components/layout/Header'
+import { StatCard } from '../../components/ui/StatCard'
+import { adminNavItems } from '../../config/adminNav'
+import { formatPrice } from '../../lib/format'
+import { supabase } from '../../lib/supabase'
+import type { Order } from '../../types/models'
+
+export function AdminDashboard() {
+  const [pendingApps, setPendingApps] = useState(0)
+  const [pendingDeposits, setPendingDeposits] = useState(0)
+  const [paidOrders, setPaidOrders] = useState(0)
+  const [revenue, setRevenue] = useState(0)
+
+  useEffect(() => {
+    void Promise.all([
+      supabase.from('farm_applications').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
+      supabase.from('orders').select('*').order('created_at', { ascending: false }).limit(200),
+    ]).then(([apps, ordersRes]) => {
+      setPendingApps(apps.count ?? 0)
+      const orders = (ordersRes.data as Order[]) ?? []
+      setPendingDeposits(orders.filter((o) => o.status === 'pending_deposit').length)
+      setPaidOrders(orders.filter((o) => o.status === 'paid' || o.status === 'packing').length)
+      setRevenue(
+        orders
+          .filter((o) => o.status !== 'cancelled' && o.status !== 'pending_deposit')
+          .reduce((sum, o) => sum + o.total_amount, 0),
+      )
+    })
+  }, [])
+
+  return (
+    <AppShell navItems={adminNavItems} roleLabel="관리자" settingsPath="/admin/none">
+      <Header title="관리자" subtitle="주문 · 농가 전체 관리" />
+      <div className="px-4 py-4 md:px-6 max-w-5xl mx-auto grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <StatCard label="입점 대기" value={`${pendingApps}건`} icon={Sprout} />
+        <StatCard label="입금 대기" value={`${pendingDeposits}건`} icon={CreditCard} />
+        <StatCard label="출고 대기" value={`${paidOrders}건`} icon={Truck} />
+        <StatCard label="매출(최근)" value={formatPrice(revenue)} icon={Package} />
+      </div>
+    </AppShell>
+  )
+}

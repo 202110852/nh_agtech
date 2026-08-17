@@ -12,7 +12,7 @@ interface OrderChartProps {
 }
 
 export function OrderChart({ data }: OrderChartProps) {
-  const maxOrders = Math.max(...data.map((item) => item.orders))
+  const maxOrders = Math.max(...data.map((item) => item.orders), 1)
   const totalOrders = data.reduce((sum, item) => sum + item.orders, 0)
 
   return (

@@ -1,109 +1,144 @@
-import { Check, Snowflake } from 'lucide-react'
+import { Bell, Smartphone } from 'lucide-react'
+import { useState } from 'react'
 import { AppShell } from '../../components/layout/AppShell'
 import { Header } from '../../components/layout/Header'
-import { Badge } from '../../components/ui/Badge'
+import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
+import { Input, Textarea } from '../../components/ui/Field'
+import { ErrorText } from '../../components/ui/Feedback'
 import { farmNavItems } from '../../config/farmNav'
-import { farmProfile } from '../../data/mockData'
-
-const plans = [
-  {
-    id: 'basic',
-    name: 'Basic',
-    price: '50,000',
-    features: ['주문·배송 관리', '기본 CRM', '우체국 간편 접수'],
-    current: false,
-  },
-  {
-    id: 'pro',
-    name: 'NH 연동 Pro',
-    price: '70,000',
-    features: ['Basic 전체 기능', 'NH 콜드체인 연동', '씽씽몰 채널 연동', '익일 배송 최적화'],
-    current: true,
-  },
-]
+import { useAuth } from '../../lib/auth'
+import { isPushSupported, registerServiceWorker, subscribePush } from '../../lib/push'
+import { supabase } from '../../lib/supabase'
 
 export function FarmSettings() {
+  const { currentFarm, profile, signOut } = useAuth()
+  const [form, setForm] = useState({
+    location: currentFarm?.location ?? '',
+    product_summary: currentFarm?.product_summary ?? '',
+    description: currentFarm?.description ?? '',
+    bank_name: currentFarm?.bank_name ?? '',
+    account_number: currentFarm?.account_number ?? '',
+    account_holder: currentFarm?.account_holder ?? '',
+    phone: profile?.phone ?? '',
+  })
+  const [message, setMessage] = useState('')
+  const [error, setError] = useState('')
+  const [pushMessage, setPushMessage] = useState('')
+
+  if (!currentFarm) return null
+
   return (
-    <AppShell navItems={farmNavItems} roleLabel="농가 관리">
-      <Header title="설정" subtitle={farmProfile.name} />
+    <AppShell navItems={farmNavItems} roleLabel="농가">
+      <Header title="설정" subtitle={currentFarm.name} />
       <div className="px-4 py-4 md:px-6 max-w-5xl mx-auto space-y-5">
-        <Card>
-          <h3 className="font-semibold text-gray-900 mb-3">농가 정보</h3>
-          <div className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-muted">농가명</span>
-              <span className="font-medium">{farmProfile.name}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted">대표</span>
-              <span className="font-medium">{farmProfile.owner}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted">지역</span>
-              <span className="font-medium">{farmProfile.location}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted">품목</span>
-              <span className="font-medium">{farmProfile.product}</span>
-            </div>
-          </div>
+        <Card className="space-y-3">
+          <h3 className="font-semibold">농가 정보</h3>
+          <Input
+            label="지역"
+            value={form.location}
+            onChange={(e) => setForm((p) => ({ ...p, location: e.target.value }))}
+          />
+          <Input
+            label="품목"
+            value={form.product_summary}
+            onChange={(e) => setForm((p) => ({ ...p, product_summary: e.target.value }))}
+          />
+          <Textarea
+            label="소개"
+            value={form.description}
+            onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
+          />
+        </Card>
+        <Card className="space-y-3">
+          <h3 className="font-semibold">입금 계좌</h3>
+          <Input label="은행" value={form.bank_name} onChange={(e) => setForm((p) => ({ ...p, bank_name: e.target.value }))} />
+          <Input
+            label="계좌번호"
+            value={form.account_number}
+            onChange={(e) => setForm((p) => ({ ...p, account_number: e.target.value }))}
+          />
+          <Input
+            label="예금주"
+            value={form.account_holder}
+            onChange={(e) => setForm((p) => ({ ...p, account_holder: e.target.value }))}
+          />
+          <Input label="연락처" value={form.phone} onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))} />
+          <ErrorText>{error}</ErrorText>
+          {message && <p className="text-sm text-primary">{message}</p>}
+          <Button
+            onClick={async () => {
+              setError('')
+              setMessage('')
+              const { error: farmError } = await supabase
+                .from('farms')
+                .update({
+                  location: form.location,
+                  product_summary: form.product_summary,
+                  description: form.description,
+                  bank_name: form.bank_name,
+                  account_number: form.account_number,
+                  account_holder: form.account_holder,
+                })
+                .eq('id', currentFarm.id)
+              if (farmError) {
+                setError(farmError.message)
+                return
+              }
+              if (profile) {
+                await supabase.from('profiles').update({ phone: form.phone }).eq('id', profile.id)
+              }
+              setMessage('저장했습니다.')
+            }}
+          >
+            저장
+          </Button>
         </Card>
 
-        <Card className="bg-primary-light border-primary/20">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Snowflake className="h-5 w-5 text-primary" />
-              <div>
-                <h4 className="font-semibold text-gray-900">NH 콜드체인 연동</h4>
-                <p className="text-xs text-muted">씽씽몰 · 냉장 물류창고</p>
-              </div>
-            </div>
-            <Badge variant="primary">
-              <Check className="mr-1 h-3 w-3" />
-              연동됨
-            </Badge>
+        <Card className="space-y-3">
+          <div className="flex items-center gap-2">
+            <Bell className="h-4 w-4 text-primary" />
+            <h3 className="font-semibold">웹 푸시 알림</h3>
           </div>
+          <p className="text-sm text-muted">
+            주문이 들어오거나 입금이 확인되면 알림을 받습니다. iOS는 홈 화면에 추가한 뒤에만 푸시가 동작하며, 권한·브라우저 제약으로 100% 보장은 되지 않습니다. 앱이 열려 있으면 화면 알림은 항상 표시됩니다.
+          </p>
+          <div className="flex items-center gap-2 text-sm text-muted">
+            <Smartphone className="h-4 w-4" />
+            공유 → 홈 화면에 추가 후 알림 허용
+          </div>
+          {pushMessage && <p className="text-sm text-primary">{pushMessage}</p>}
+          <Button
+            variant="outline"
+            onClick={async () => {
+              try {
+                if (!isPushSupported()) throw new Error('이 브라우저는 웹 푸시를 지원하지 않습니다.')
+                await registerServiceWorker()
+                const sub = await subscribePush()
+                const { error: subError } = await supabase.from('push_subscriptions').upsert(
+                  {
+                    user_id: profile?.id,
+                    endpoint: sub.endpoint,
+                    p256dh: sub.p256dh,
+                    auth: sub.auth,
+                    user_agent: navigator.userAgent,
+                  },
+                  { onConflict: 'endpoint' },
+                )
+                if (subError) throw subError
+                setPushMessage('푸시 알림이 허용되었습니다.')
+              } catch (err) {
+                setPushMessage(err instanceof Error ? err.message : '푸시 설정에 실패했습니다.')
+              }
+            }}
+          >
+            알림 허용하기
+          </Button>
         </Card>
 
-        <section>
-          <h3 className="font-semibold text-gray-900 mb-3">이용 요금제</h3>
-          <div className="grid gap-3 sm:grid-cols-2">
-            {plans.map((plan) => (
-              <Card
-                key={plan.id}
-                className={plan.current ? 'ring-2 ring-primary' : ''}
-              >
-                {plan.current && (
-                  <Badge className="mb-2">현재 플랜</Badge>
-                )}
-                <h4 className="text-lg font-bold">{plan.name}</h4>
-                <p className="mt-1">
-                  <span className="text-2xl font-bold text-primary">₩{plan.price}</span>
-                  <span className="text-sm text-muted">/월</span>
-                </p>
-                <ul className="mt-3 space-y-1.5">
-                  {plan.features.map((f) => (
-                    <li key={f} className="flex items-center gap-2 text-sm text-gray-700">
-                      <Check className="h-3.5 w-3.5 text-primary shrink-0" />
-                      {f}
-                    </li>
-                  ))}
-                </ul>
-              </Card>
-            ))}
-          </div>
-        </section>
-
-        <Card>
-          <h4 className="font-semibold text-gray-900 mb-2">NH 연동 혜택</h4>
-          <ul className="space-y-2 text-sm text-gray-700">
-            <li>· NH 기반 신뢰성 있는 판매 채널</li>
-            <li>· 지역화폐 연동으로 수수료 절감</li>
-            <li>· 방문접수 자동화, 운송장 출력</li>
-            <li>· 계약소포 체결, 택배비 지원사업으로 택배비 절감</li>
-          </ul>
-        </Card>
+        <Button variant="ghost" onClick={() => void signOut()}>
+          로그아웃
+        </Button>
       </div>
     </AppShell>
   )

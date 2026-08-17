@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { ArrowLeft } from 'lucide-react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { useNavContext } from './NavContext'
@@ -7,7 +8,7 @@ interface HeaderProps {
   subtitle?: string
   showBack?: boolean
   backTo?: string
-  rightElement?: React.ReactNode
+  rightElement?: ReactNode
 }
 
 export function Header({ title, subtitle, showBack, backTo, rightElement }: HeaderProps) {

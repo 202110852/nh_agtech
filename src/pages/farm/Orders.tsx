@@ -1,29 +1,62 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { AppShell } from '../../components/layout/AppShell'
 import { Header } from '../../components/layout/Header'
+import { NotificationBell } from '../../components/notifications/NotificationBell'
 import { OrderItem } from '../../components/shared/OrderItem'
 import { farmNavItems } from '../../config/farmNav'
-import type { OrderStatus } from '../../data/mockData'
-import { orders } from '../../data/mockData'
+import { useAuth } from '../../lib/auth'
+import { farmUpdatableStatuses, statusLabels } from '../../lib/orderStatus'
+import { toOrderListModel, type OrderRow } from '../../lib/orders'
+import { supabase } from '../../lib/supabase'
+import type { OrderStatus } from '../../types/models'
 
 type FilterStatus = 'all' | OrderStatus
 
 const filters: { id: FilterStatus; label: string }[] = [
   { id: 'all', label: '전체' },
-  { id: 'received', label: '접수' },
+  { id: 'pending_deposit', label: '입금대기' },
+  { id: 'paid', label: '입금완료' },
   { id: 'packing', label: '포장중' },
   { id: 'shipping', label: '배송중' },
   { id: 'completed', label: '완료' },
 ]
 
 export function FarmOrders() {
+  const { currentFarm } = useAuth()
+  const [params] = useSearchParams()
   const [filter, setFilter] = useState<FilterStatus>('all')
+  const [orders, setOrders] = useState<OrderRow[]>([])
 
-  const filtered = filter === 'all' ? orders : orders.filter((o) => o.status === filter)
+  useEffect(() => {
+    if (!currentFarm) return
+    supabase
+      .from('orders')
+      .select('*, order_items(*), shipments(*)')
+      .eq('farm_id', currentFarm.id)
+      .order('created_at', { ascending: false })
+      .then(({ data }) => setOrders((data as OrderRow[]) ?? []))
+  }, [currentFarm])
+
+  const filtered = filter === 'all' ? orders : orders.filter((order) => order.status === filter)
+  const highlight = params.get('highlight')
+
+  const counts = useMemo(
+    () =>
+      Object.fromEntries(filters.map(({ id }) => [id, id === 'all' ? orders.length : orders.filter((o) => o.status === id).length])),
+    [orders],
+  )
+
+  async function changeStatus(id: string, status: OrderStatus) {
+    const { error } = await supabase.from('orders').update({ status }).eq('id', id)
+    if (!error) {
+      setOrders((prev) => prev.map((order) => (order.id === id ? { ...order, status } : order)))
+    }
+  }
 
   return (
-    <AppShell navItems={farmNavItems} roleLabel="농가 관리">
-      <Header title="주문 관리" subtitle={`총 ${orders.length}건`} />
+    <AppShell navItems={farmNavItems} roleLabel="농가">
+      <Header title="주문 관리" subtitle={`총 ${orders.length}건`} rightElement={<NotificationBell />} />
       <div className="px-4 py-4 md:px-6 max-w-5xl mx-auto space-y-4">
         <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
           {filters.map(({ id, label }) => (
@@ -31,27 +64,43 @@ export function FarmOrders() {
               key={id}
               onClick={() => setFilter(id)}
               className={`shrink-0 rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
-                filter === id
-                  ? 'bg-primary text-white'
-                  : 'bg-white text-gray-600 border border-gray-200 hover:border-primary'
+                filter === id ? 'bg-primary text-white' : 'bg-white text-gray-600 border border-gray-200'
               }`}
             >
               {label}
-              {id !== 'all' && (
-                <span className="ml-1 text-xs opacity-70">
-                  ({orders.filter((o) => o.status === id).length})
-                </span>
-              )}
+              <span className="ml-1 text-xs opacity-70">({counts[id] ?? 0})</span>
             </button>
           ))}
         </div>
-
         <div className="space-y-3">
           {filtered.length === 0 ? (
             <p className="text-center text-muted py-8">해당 상태의 주문이 없습니다</p>
           ) : (
             filtered.map((order) => (
-              <OrderItem key={order.id} order={order} showActions />
+              <div key={order.id} className={highlight === order.id ? 'rounded-2xl ring-2 ring-primary' : ''}>
+                <OrderItem
+                  order={toOrderListModel(order)}
+                  extra={
+                    order.status !== 'pending_deposit' && order.status !== 'cancelled' ? (
+                      <div className="mt-3">
+                        <select
+                          className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs"
+                          value={order.status}
+                          onChange={(e) => void changeStatus(order.id, e.target.value as OrderStatus)}
+                        >
+                          {farmUpdatableStatuses
+                            .filter((status) => status !== 'cancelled' || order.status !== 'completed')
+                            .map((status) => (
+                              <option key={status} value={status}>
+                                {statusLabels[status]}
+                              </option>
+                            ))}
+                        </select>
+                      </div>
+                    ) : undefined
+                  }
+                />
+              </div>
             ))
           )}
         </div>

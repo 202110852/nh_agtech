@@ -1,93 +1,89 @@
-import { CheckCircle, Printer, Truck } from 'lucide-react'
-import { useState } from 'react'
+import { Truck } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import { AppShell } from '../../components/layout/AppShell'
 import { Header } from '../../components/layout/Header'
+import { NotificationBell } from '../../components/notifications/NotificationBell'
 import { OrderItem } from '../../components/shared/OrderItem'
-import { Badge } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
 import { farmNavItems } from '../../config/farmNav'
-import { orders } from '../../data/mockData'
-
-const pendingOrders = orders.filter((o) => o.status === 'received' || o.status === 'packing')
+import { invokeFunction } from '../../lib/functions'
+import { useAuth } from '../../lib/auth'
+import { toOrderListModel, type OrderRow } from '../../lib/orders'
+import { supabase } from '../../lib/supabase'
+import { ErrorText } from '../../components/ui/Feedback'
 
 export function FarmDelivery() {
+  const { currentFarm } = useAuth()
+  const [orders, setOrders] = useState<OrderRow[]>([])
   const [selected, setSelected] = useState<string[]>([])
-  const [submitted, setSubmitted] = useState(false)
+  const [message, setMessage] = useState('')
+  const [error, setError] = useState('')
 
-  const toggleSelect = (id: string) => {
-    setSelected((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
-    )
-  }
-
-  const handleSubmit = () => {
-    if (selected.length > 0) setSubmitted(true)
-  }
+  useEffect(() => {
+    if (!currentFarm) return
+    supabase
+      .from('orders')
+      .select('*, order_items(*), shipments(*)')
+      .eq('farm_id', currentFarm.id)
+      .in('status', ['paid', 'packing'])
+      .order('created_at', { ascending: false })
+      .then(({ data }) => setOrders((data as OrderRow[]) ?? []))
+  }, [currentFarm])
 
   return (
-    <AppShell navItems={farmNavItems} roleLabel="농가 관리">
-      <Header title="배송 관리" subtitle="우체국 택배 간편 사전 접수" />
+    <AppShell navItems={farmNavItems} roleLabel="농가">
+      <Header title="배송 관리" subtitle="우체국 택배 송장 신청" rightElement={<NotificationBell />} />
       <div className="px-4 py-4 md:px-6 max-w-5xl mx-auto space-y-4">
         <Card className="bg-amber-50 border-amber-100">
           <div className="flex gap-3">
             <Truck className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
             <div>
-              <h4 className="font-semibold text-amber-900">계약소포 · 택배비 지원사업</h4>
+              <h4 className="font-semibold text-amber-900">우체국 API 연동 준비 중</h4>
               <p className="mt-1 text-sm text-amber-700">
-                우체국 방문 없이 간편 사전 접수가 가능합니다. 운송장 출력과 송장 부착을 자동화하여 농가 업무를 줄여드립니다.
+                지금은 송장 신청 기반만 연결되어 있습니다. 실제 운송장 발급은 이후 우체국 API를 붙이면 동작합니다.
               </p>
             </div>
           </div>
         </Card>
-
-        {submitted ? (
-          <Card className="text-center py-8">
-            <CheckCircle className="h-12 w-12 text-primary mx-auto mb-3" />
-            <h3 className="font-bold text-gray-900">우체국 접수 완료</h3>
-            <p className="mt-2 text-sm text-muted">
-              {selected.length}건의 운송장이 생성되었습니다
-            </p>
-            <div className="mt-4 space-y-2">
-              {selected.map((id, i) => (
-                <div key={id} className="flex items-center justify-between rounded-xl bg-primary-light px-4 py-2">
-                  <span className="text-sm font-medium">주문 {id.toUpperCase()}</span>
-                  <Badge variant="primary">KR{98765432100 + i}</Badge>
-                </div>
-              ))}
-            </div>
-            <Button className="mt-4" variant="outline">
-              <Printer className="h-4 w-4" />
-              운송장 일괄 출력
-            </Button>
-          </Card>
-        ) : (
-          <>
-            <div className="flex items-center justify-between">
-              <p className="text-sm text-muted">
-                접수 대기 {pendingOrders.length}건 · {selected.length}건 선택
-              </p>
-              <Button
-                size="sm"
-                disabled={selected.length === 0}
-                onClick={handleSubmit}
-              >
-                간편 접수 ({selected.length})
-              </Button>
-            </div>
-
-            <div className="space-y-3">
-              {pendingOrders.map((order) => (
-                <OrderItem
-                  key={order.id}
-                  order={order}
-                  selected={selected.includes(order.id)}
-                  onSelect={toggleSelect}
-                />
-              ))}
-            </div>
-          </>
-        )}
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-muted">
+            출고 대기 {orders.length}건 · {selected.length}건 선택
+          </p>
+          <Button
+            size="sm"
+            disabled={selected.length === 0}
+            onClick={async () => {
+              setError('')
+              setMessage('')
+              try {
+                const result = await invokeFunction<{ message?: string; error?: string }>('kpost-shipment', {
+                  orderIds: selected,
+                })
+                setMessage(result.message ?? '연동이 아직 준비되지 않았습니다.')
+              } catch (err) {
+                setError(err instanceof Error ? err.message : '송장 신청을 진행할 수 없습니다.')
+              }
+            }}
+          >
+            송장 신청 ({selected.length})
+          </Button>
+        </div>
+        <ErrorText>{error}</ErrorText>
+        {message && <p className="text-sm text-primary">{message}</p>}
+        <div className="space-y-3">
+          {orders.map((order) => (
+            <OrderItem
+              key={order.id}
+              order={toOrderListModel(order)}
+              selected={selected.includes(order.id)}
+              onSelect={(id) =>
+                setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
+              }
+            />
+          ))}
+          {orders.length === 0 && <p className="text-center text-muted py-8">출고 대기 주문이 없습니다</p>}
+        </div>
       </div>
     </AppShell>
   )

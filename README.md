@@ -1,56 +1,79 @@
-# 바로팜 UI 목업
+# 팜어시 (Farmassi)
 
-**바로팜**(BaroFarm) — 스테이블 퓨전(Stable Fusion)의 농가 직송 기반 주문·배송·고객 관리 플랫폼 **농가 관리 UI 목업**입니다.  
-소비자 주문은 NH 씽씽몰에서 처리하며, 본 목업은 농가의 주문·배송·CRM 관리에 집중합니다.  
-실제 API, 우체국·NH 연동 없이 화면 전환과 정적 데이터만 동작합니다.
-
-## 주요 화면
-
-- **대시보드** (`/`) — KPI, 최근 주문, 우체국 간편접수 바로가기
-- **주문 관리** (`/orders`) — 상태별 주문 필터
-- **배송 관리** (`/delivery`) — 우체국 간편 사전 접수
-- **고객 관리** (`/crm`) — 고객 목록·구매 이력
-- **설정** (`/settings`) — 요금제, NH 연동 상태
+농가별 주문 페이지, 무통장 입금, 농가 알림, 관리자 운영을 위한 주문·배송 플랫폼입니다.
 
 ## 로컬 실행
 
 ```bash
+cp .env.example .env.local
 npm install
 npm run dev
 ```
 
-브라우저에서 `http://localhost:5173` 접속
+브라우저에서 `http://localhost:5173`
 
-## 빌드
+## 역할
+
+- **주문자 / 농가**: 카카오 로그인
+- **관리자**: 이메일 + 비밀번호 (`/admin/login`)
+
+## 화면
+
+- `/o/:farmSlug` — 농가 주문 페이지
+- `/farm` — 농가 주문·배송 (승인된 농가)
+- `/apply` — 농가 입점 신청
+- `/admin` — 주문·입금·농가 전체 관리
+
+## 처음 쓰는 순서
+
+1. [카카오 디벨로퍼스](https://developers.kakao.com/console/app)에서 앱을 만들고 **카카오 로그인을 ON** 합니다.
+2. [앱] → [플랫폼 키] → **JavaScript 키**에 웹 도메인을 등록합니다.
+   - `http://localhost`
+   - `https://farmassi.kr`
+   - `https://www.farmassi.kr`
+3. JavaScript 키와 REST API 키의 **리다이렉트 URI**를 등록합니다. 도메인과 달리 여기는 요청 주소와 같아야 합니다.
+   - `http://localhost:5173/auth/callback` (로컬 Vite 포트가 다르면 그 포트)
+   - `https://farmassi.kr/auth/callback`
+   - `https://www.farmassi.kr/auth/callback`
+4. [카카오 로그인] → [동의항목]에서 닉네임·프로필 이미지를 설정합니다.
+5. `.env.local`에 JavaScript 키와 REST API 키를 넣습니다.
 
 ```bash
-npm run build
-npm run preview
+VITE_KAKAO_JS_KEY=카카오_JavaScript_키
+KAKAO_REST_API_KEY=카카오_REST_API_키
 ```
+
+6. 같은 REST API 키를 Edge Function 시크릿 `KAKAO_REST_API_KEY`로도 등록합니다. Client Secret을 켜 두었다면 함께 등록합니다.
+
+```bash
+npx supabase secrets set KAKAO_REST_API_KEY=... --project-ref pfysjhabkqwfytzpsbom
+```
+
+휴대폰 웹/PWA에서는 [카카오 JavaScript SDK 간편로그인](https://developers.kakao.com/docs/latest/ko/kakaologin/js)이 카카오톡 앱을 직접 엽니다. PC 웹은 카카오계정 로그인 화면으로 넘어갑니다.
+
+7. Authentication → Providers → Email에서 **공개 회원가입은 끄고**, 관리자 계정은 Dashboard에서 직접 생성합니다.
+8. SQL 또는 Table Editor로 해당 사용자의 `profiles.role` 을 `admin` 으로 변경합니다.
+
+```sql
+update public.profiles
+   set role = 'admin'
+ where id = '<auth user uuid>';
+```
+
+9. (선택) 웹 푸시용 VAPID 비밀키를 Edge Function 시크릿으로 등록합니다.
+
+```bash
+npx supabase secrets set VAPID_PUBLIC_KEY=... VAPID_PRIVATE_KEY=... --project-ref pfysjhabkqwfytzpsbom
+```
+
+웹 푸시는 브라우저 권한·iOS 홈화면 추가 여부에 따라 100% 보장되지 않습니다. 농가 페이지가 열려 있으면 Realtime 인앱 알림이 동작합니다.
+
+## 이후 연동 (기반만 준비됨)
+
+- 우체국 송장: `src/integrations/shipping`, Edge Function `kpost-shipment`
+- 계좌 스크래핑(GND, 헥토파이낸셜, 뱅크샐러드, 코드에프): `src/integrations/deposit`, Edge Function `scrape-deposits`
+- 입금 확인 공통 진입점: `confirm-deposit`
 
 ## 배포
 
-### Vercel
-
-1. [vercel.com](https://vercel.com)에서 GitHub 저장소 연결
-2. Framework Preset: **Vite**
-3. Build Command: `npm run build`
-4. Output Directory: `dist`
-5. Deploy
-
-`vercel.json`에 SPA 라우팅 설정이 포함되어 있습니다.
-
-### Netlify
-
-1. [netlify.com](https://netlify.com)에서 저장소 연결
-2. Build command: `npm run build`
-3. Publish directory: `dist`
-4. Deploy
-
-`public/_redirects`에 SPA 라우팅 설정이 포함되어 있습니다.
-
-## 디자인
-
-- Primary: `#1b7e3c`
-- 모바일 우선 반응형 (하단 탭 / 데스크탑 사이드바)
-- 폰트: Pretendard
+Vercel Framework Preset: Vite, Build: `npm run build`, Output: `dist`

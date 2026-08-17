@@ -7,14 +7,18 @@ interface AppShellProps {
   children: ReactNode
   navItems: NavItem[]
   roleLabel: string
+  settingsPath?: string
 }
 
-const SETTINGS_PATH = '/settings'
-
-export function AppShell({ children, navItems, roleLabel }: AppShellProps) {
-  const mobileSettingsItem = navItems.find((item) => item.to === SETTINGS_PATH)
+export function AppShell({
+  children,
+  navItems,
+  roleLabel,
+  settingsPath = '/farm/settings',
+}: AppShellProps) {
+  const mobileSettingsItem = navItems.find((item) => item.to === settingsPath)
   const bottomNavItems = mobileSettingsItem
-    ? navItems.filter((item) => item.to !== SETTINGS_PATH)
+    ? navItems.filter((item) => item.to !== settingsPath)
     : navItems
 
   return (

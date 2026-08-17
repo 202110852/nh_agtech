@@ -1,0 +1,113 @@
+import { Leaf, LogIn, Sprout, Store } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
+import { Header } from '../components/layout/Header'
+import { Card } from '../components/ui/Card'
+import { Button } from '../components/ui/Button'
+import { PageSpinner } from '../components/ui/Feedback'
+import { BRAND } from '../config/brand'
+import { useAuth } from '../lib/auth'
+import { supabase } from '../lib/supabase'
+import type { Farm } from '../types/models'
+
+export function Landing() {
+  const { user, isAdmin, isFarmUser } = useAuth()
+  const [farms, setFarms] = useState<Farm[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    supabase
+      .from('farms')
+      .select('*')
+      .eq('is_active', true)
+      .order('name')
+      .then(({ data }) => {
+        setFarms((data as Farm[]) ?? [])
+        setLoading(false)
+      })
+  }, [])
+
+  return (
+    <div className="min-h-dvh bg-surface">
+      <Header
+        title={BRAND.serviceName}
+        subtitle={BRAND.tagline}
+        rightElement={
+          user ? (
+            <Link to={isAdmin ? '/admin' : isFarmUser ? '/farm' : '/me/orders'} className="text-sm font-semibold text-primary">
+              내 페이지
+            </Link>
+          ) : (
+            <Link to="/login" className="text-sm font-semibold text-primary">
+              로그인
+            </Link>
+          )
+        }
+      />
+      <div className="px-4 py-6 md:px-6 max-w-5xl mx-auto space-y-6">
+        <div className="rounded-2xl bg-primary p-6 text-white">
+          <div className="flex items-center gap-2 mb-2">
+            <Leaf className="h-5 w-5" />
+            <span className="text-sm text-white/80">{BRAND.serviceNameEn}</span>
+          </div>
+          <h2 className="text-2xl font-bold">농가에서 바로, 신선한 직송</h2>
+          <p className="mt-2 text-sm text-white/80">
+            농가별 주문 페이지에서 상품을 담고, 안내된 계좌로 입금하면 농가가 배송을 준비합니다.
+          </p>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-3">
+          <Link to="/login">
+            <Card className="h-full">
+              <LogIn className="h-5 w-5 text-primary" />
+              <p className="mt-2 font-semibold">카카오 로그인</p>
+              <p className="mt-1 text-sm text-muted">주문자 · 농가 공통</p>
+            </Card>
+          </Link>
+          <Link to="/apply">
+            <Card className="h-full">
+              <Sprout className="h-5 w-5 text-primary" />
+              <p className="mt-2 font-semibold">농가 입점 신청</p>
+              <p className="mt-1 text-sm text-muted">관리자 승인 후 이용</p>
+            </Card>
+          </Link>
+          <Link to="/admin/login">
+            <Card className="h-full">
+              <Store className="h-5 w-5 text-primary" />
+              <p className="mt-2 font-semibold">관리자</p>
+              <p className="mt-1 text-sm text-muted">이메일 로그인</p>
+            </Card>
+          </Link>
+        </div>
+
+        <section>
+          <h3 className="mb-3 font-bold text-gray-900">주문할 농가</h3>
+          {loading ? (
+            <PageSpinner />
+          ) : farms.length === 0 ? (
+            <Card>
+              <p className="text-sm text-muted">아직 공개된 농가가 없습니다. 관리자 승인 후 목록에 나타납니다.</p>
+            </Card>
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2">
+              {farms.map((farm) => (
+                <Card key={farm.id}>
+                  <p className="font-bold text-gray-900">{farm.name}</p>
+                  <p className="mt-1 text-sm text-muted">{farm.location || '지역 미등록'}</p>
+                  {farm.product_summary && (
+                    <p className="mt-1 text-sm text-gray-700">{farm.product_summary}</p>
+                  )}
+                  <Link to={`/o/${farm.slug}`}>
+                    <Button className="mt-4" fullWidth>
+                      주문하기
+                    </Button>
+                  </Link>
+                </Card>
+              ))}
+            </div>
+          )}
+        </section>
+      </div>
+    </div>
+  )
+}

@@ -1,30 +1,156 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
-import { FarmChat } from './pages/farm/Chat'
-import { FarmCRM } from './pages/farm/CRM'
+import { RequireAdmin, RequireAuth, RequireFarm } from './components/auth/Guards'
+import { Landing } from './pages/Landing'
+import { Login } from './pages/auth/Login'
+import { AuthCallback } from './pages/auth/AuthCallback'
+import { AdminLogin } from './pages/auth/AdminLogin'
+import { FarmStore } from './pages/order/FarmStore'
+import { Checkout } from './pages/order/Checkout'
+import { MyOrders } from './pages/me/MyOrders'
+import { MyOrderDetail } from './pages/me/MyOrderDetail'
+import { FarmApply } from './pages/farm/Apply'
+import { FarmApplyStatus } from './pages/farm/ApplyStatus'
 import { FarmDashboard } from './pages/farm/Dashboard'
-import { FarmDelivery } from './pages/farm/Delivery'
 import { FarmOrders } from './pages/farm/Orders'
+import { FarmDelivery } from './pages/farm/Delivery'
 import { FarmSettings } from './pages/farm/Settings'
+import { AdminDashboard } from './pages/admin/Dashboard'
+import { AdminApplications } from './pages/admin/Applications'
+import { AdminFarms } from './pages/admin/Farms'
+import { AdminProducts } from './pages/admin/Products'
+import { AdminOrders } from './pages/admin/Orders'
+import { AdminDeposits } from './pages/admin/Deposits'
+import { AdminShipments } from './pages/admin/Shipments'
 
 export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<FarmDashboard />} />
-        <Route path="/orders" element={<FarmOrders />} />
-        <Route path="/delivery" element={<FarmDelivery />} />
-        <Route path="/crm" element={<FarmCRM />} />
-        <Route path="/chat" element={<FarmChat />} />
-        <Route path="/settings" element={<FarmSettings />} />
+        <Route path="/" element={<Landing />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/auth/callback" element={<AuthCallback />} />
+        <Route path="/o/:farmSlug" element={<FarmStore />} />
+        <Route
+          path="/o/:farmSlug/checkout"
+          element={
+            <RequireAuth>
+              <Checkout />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/me/orders"
+          element={
+            <RequireAuth>
+              <MyOrders />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/me/orders/:orderId"
+          element={
+            <RequireAuth>
+              <MyOrderDetail />
+            </RequireAuth>
+          }
+        />
+        <Route path="/apply" element={<FarmApply />} />
+        <Route path="/apply/status" element={<FarmApplyStatus />} />
 
-        <Route path="/farm" element={<Navigate to="/" replace />} />
-        <Route path="/farm/orders" element={<Navigate to="/orders" replace />} />
-        <Route path="/farm/delivery" element={<Navigate to="/delivery" replace />} />
-        <Route path="/farm/crm" element={<Navigate to="/crm" replace />} />
-        <Route path="/farm/chat" element={<Navigate to="/chat" replace />} />
-        <Route path="/farm/settings" element={<Navigate to="/settings" replace />} />
-        <Route path="/consumer/*" element={<Navigate to="/" replace />} />
+        <Route
+          path="/farm"
+          element={
+            <RequireFarm>
+              <FarmDashboard />
+            </RequireFarm>
+          }
+        />
+        <Route
+          path="/farm/orders"
+          element={
+            <RequireFarm>
+              <FarmOrders />
+            </RequireFarm>
+          }
+        />
+        <Route
+          path="/farm/delivery"
+          element={
+            <RequireFarm>
+              <FarmDelivery />
+            </RequireFarm>
+          }
+        />
+        <Route
+          path="/farm/settings"
+          element={
+            <RequireFarm>
+              <FarmSettings />
+            </RequireFarm>
+          }
+        />
 
+        <Route path="/admin/login" element={<AdminLogin />} />
+        <Route
+          path="/admin"
+          element={
+            <RequireAdmin>
+              <AdminDashboard />
+            </RequireAdmin>
+          }
+        />
+        <Route
+          path="/admin/applications"
+          element={
+            <RequireAdmin>
+              <AdminApplications />
+            </RequireAdmin>
+          }
+        />
+        <Route
+          path="/admin/farms"
+          element={
+            <RequireAdmin>
+              <AdminFarms />
+            </RequireAdmin>
+          }
+        />
+        <Route
+          path="/admin/products"
+          element={
+            <RequireAdmin>
+              <AdminProducts />
+            </RequireAdmin>
+          }
+        />
+        <Route
+          path="/admin/orders"
+          element={
+            <RequireAdmin>
+              <AdminOrders />
+            </RequireAdmin>
+          }
+        />
+        <Route
+          path="/admin/deposits"
+          element={
+            <RequireAdmin>
+              <AdminDeposits />
+            </RequireAdmin>
+          }
+        />
+        <Route
+          path="/admin/shipments"
+          element={
+            <RequireAdmin>
+              <AdminShipments />
+            </RequireAdmin>
+          }
+        />
+
+        <Route path="/orders" element={<Navigate to="/farm/orders" replace />} />
+        <Route path="/delivery" element={<Navigate to="/farm/delivery" replace />} />
+        <Route path="/settings" element={<Navigate to="/farm/settings" replace />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>

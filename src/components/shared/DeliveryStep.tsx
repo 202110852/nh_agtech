@@ -1,5 +1,5 @@
 import { Check } from 'lucide-react'
-import type { TrackingStep } from '../../data/mockData'
+import type { TrackingStep } from '../../types/tracking'
 
 interface DeliveryStepProps {
   step: TrackingStep
