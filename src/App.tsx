@@ -1,4 +1,5 @@
 import { BrowserRouter, Navigate, Route, Routes, useParams } from 'react-router-dom'
+import { GoogleAnalytics } from './components/shared/GoogleAnalytics'
 import { RedirectToFarmWorkspace, RequireAdmin, RequireAuth, RequireFarmWorkspace } from './components/auth/Guards'
 import { LoginSheetProvider } from './components/auth/LoginSheet'
 import { Landing } from './pages/Landing'
@@ -31,6 +32,7 @@ function RedirectLegacyStore({ suffix = '' }: { suffix?: string }) {
 export default function App() {
   return (
     <BrowserRouter>
+      <GoogleAnalytics />
       <LoginSheetProvider>
         <Routes>
         <Route path="/" element={<Landing />} />
