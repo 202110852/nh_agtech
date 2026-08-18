@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { ErrorText, PageSpinner } from '../../components/ui/Feedback'
-import { invokeFunction } from '../../lib/functions'
-import { clearKakaoCallback, readKakaoCallback } from '../../lib/kakao'
 import { supabase } from '../../lib/supabase'
+
+function safeNext(raw: string | null) {
+  if (!raw || !raw.startsWith('/') || raw.startsWith('//')) return '/'
+  return raw
+}
 
 export function AuthCallback() {
   const navigate = useNavigate()
@@ -11,43 +14,36 @@ export function AuthCallback() {
   const [error, setError] = useState('')
 
   useEffect(() => {
-    const next = params.get('next') || sessionStorage.getItem('farmassi-next') || '/'
+    const next = safeNext(params.get('next') || sessionStorage.getItem('farmassi-next'))
     let done = false
 
     function go(path: string) {
       if (done) return
       done = true
       sessionStorage.removeItem('farmassi-next')
-      clearKakaoCallback()
       navigate(path, { replace: true })
     }
 
     async function finish() {
-      const kakao = readKakaoCallback(params)
-      if (kakao.error) {
-        setError(kakao.errorDescription || kakao.error)
+      const oauthError = params.get('error_description') || params.get('error')
+      if (oauthError) {
+        setError(oauthError)
         return
       }
 
-      if (kakao.isKakaoCallback) {
-        if (kakao.state !== kakao.savedState) {
-          setError('로그인 요청이 만료되었습니다. 다시 시도해주세요.')
+      const code = params.get('code')
+      if (code) {
+        const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
+        if (exchangeError) {
+          const { data } = await supabase.auth.getSession()
+          if (data.session) {
+            go(next)
+            return
+          }
+          setError(exchangeError.message)
           return
         }
-        try {
-          const { hashedToken } = await invokeFunction<{ hashedToken: string }>('kakao-login', {
-            code: kakao.code,
-            redirectUri: kakao.redirectUri,
-          })
-          const { error: otpError } = await supabase.auth.verifyOtp({
-            token_hash: hashedToken,
-            type: 'email',
-          })
-          if (otpError) throw otpError
-          go(next)
-        } catch (err) {
-          setError(err instanceof Error ? err.message : '카카오 로그인에 실패했습니다.')
-        }
+        go(next)
         return
       }
 

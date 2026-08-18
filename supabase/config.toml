@@ -1,9 +1,6 @@
 # Farmassi local development
 project_id = "pfysjhabkqwfytzpsbom"
 
-[functions.kakao-login]
-verify_jwt = false
-
 [functions.create-order]
 verify_jwt = true
 
@@ -22,3 +19,6 @@ verify_jwt = true
 [functions.scrape-deposits]
 verify_jwt = true
 # later: schedule = "*/10 * * * *"
+
+[functions.naver-address]
+verify_jwt = true

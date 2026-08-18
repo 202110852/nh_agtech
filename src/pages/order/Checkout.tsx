@@ -3,12 +3,14 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Header } from '../../components/layout/Header'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
-import { Input, Textarea } from '../../components/ui/Field'
+import { AddressPicker } from '../../components/shared/AddressPicker'
+import { Input } from '../../components/ui/Field'
+import { PhoneField } from '../../components/ui/PhoneField'
+import { RequestMemoField } from '../../components/ui/RequestMemoField'
 import { ErrorText, PageSpinner } from '../../components/ui/Feedback'
 import { clearCart, getCart } from '../../lib/cart'
 import { formatPrice } from '../../lib/format'
 import { invokeFunction } from '../../lib/functions'
-import { openPostcode } from '../../lib/postcode'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/auth'
 import type { Farm, Product, SavedAddress } from '../../types/models'
@@ -120,6 +122,10 @@ export function Checkout() {
         onSubmit={async (e) => {
           e.preventDefault()
           setError('')
+          if (!form.address.trim()) {
+            setError('배송지를 현재 위치 또는 검색으로 설정해 주세요.')
+            return
+          }
           setPending(true)
           try {
             const result = await invokeFunction<CheckoutResult>('create-order', {
@@ -137,7 +143,7 @@ export function Checkout() {
             })
             clearCart(farmSlug)
             await refresh()
-            navigate(`/me/orders/${result.orderId}`, { replace: true })
+            navigate(`/me/orders/${result.orderId}/complete`, { replace: true })
           } catch (err) {
             setError(err instanceof Error ? err.message : '주문에 실패했습니다.')
           } finally {
@@ -210,40 +216,34 @@ export function Checkout() {
             onChange={(e) => setForm((p) => ({ ...p, recipient_name: e.target.value }))}
             required
           />
-          <Input
+          <PhoneField
             label="전화번호"
-            type="tel"
             value={form.phone}
-            onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))}
+            onChange={(phone) => setForm((p) => ({ ...p, phone }))}
             required
           />
-          <div className="flex gap-2 items-end">
-            <div className="flex-1">
-              <Input label="우편번호" value={form.zonecode} readOnly placeholder="주소 검색" required />
-            </div>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={async () => {
-                const result = await openPostcode()
+          <AddressPicker
+            value={{
+              zonecode: form.zonecode,
+              address: form.address,
+              addressDetail: form.address_detail,
+            }}
+            onChange={(next) => {
+              if (next.address !== form.address || next.zonecode !== form.zonecode) {
                 setSelectedAddressId('new')
-                setForm((p) => ({ ...p, zonecode: result.zonecode, address: result.address }))
-              }}
-            >
-              주소 검색
-            </Button>
-          </div>
-          <Input label="주소" value={form.address} readOnly required />
-          <Input
-            label="상세주소"
-            value={form.address_detail}
-            onChange={(e) => setForm((p) => ({ ...p, address_detail: e.target.value }))}
+              }
+              setForm((p) => ({
+                ...p,
+                zonecode: next.zonecode,
+                address: next.address,
+                address_detail: next.addressDetail,
+              }))
+            }}
           />
-          <Textarea
+          <RequestMemoField
             label="요청사항"
             value={form.request_memo}
-            onChange={(e) => setForm((p) => ({ ...p, request_memo: e.target.value }))}
-            placeholder="문 앞에 놓아주세요"
+            onChange={(request_memo) => setForm((p) => ({ ...p, request_memo }))}
           />
           <label className="flex items-center gap-2 text-sm">
             <input
@@ -258,7 +258,7 @@ export function Checkout() {
 
         <Card className="bg-primary-light border-primary/20">
           <p className="text-sm text-gray-800">
-            주문 후 농가 계좌({farm.bank_name} {farm.account_number})로 입금해주세요. 입금 확인 후 출고가 진행됩니다.
+            주문이 완료되면 입금할 농가 계좌를 안내해 드립니다. 입금 확인 후 출고가 진행됩니다.
           </p>
         </Card>
 

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { Header } from '../../components/layout/Header'
+import { DepositGuide } from '../../components/shared/DepositGuide'
 import { Card } from '../../components/ui/Card'
 import { Badge } from '../../components/ui/Badge'
 import { PageSpinner } from '../../components/ui/Feedback'
@@ -64,16 +65,13 @@ export function MyOrderDetail() {
           </div>
         </Card>
 
-        {order.status === 'pending_deposit' && farm && (
-          <Card className="bg-primary-light border-primary/20 space-y-2">
-            <h3 className="font-semibold text-gray-900">입금 안내</h3>
-            <p className="text-sm">
-              {farm.bank_name} {farm.account_number}
-            </p>
-            <p className="text-sm">예금주 {farm.account_holder}</p>
-            <p className="text-sm">금액 {formatPrice(order.deposit_due_amount)}</p>
-            <p className="text-sm font-bold">입금자명을 반드시 {order.deposit_code} 로 입력해주세요.</p>
-          </Card>
+        {order.status === 'pending_deposit' && (
+          <DepositGuide
+            bankName={farm?.bank_name ?? ''}
+            accountNumber={farm?.account_number ?? ''}
+            accountHolder={farm?.account_holder ?? ''}
+            amount={order.deposit_due_amount}
+          />
         )}
 
         <Card>

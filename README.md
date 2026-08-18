@@ -27,32 +27,26 @@ npm run dev
 ## 처음 쓰는 순서
 
 1. [카카오 디벨로퍼스](https://developers.kakao.com/console/app)에서 앱을 만들고 **카카오 로그인을 ON** 합니다.
-2. [앱] → [플랫폼 키] → **JavaScript 키**에 웹 도메인을 등록합니다.
-   - `http://localhost`
-   - `https://farmassi.kr`
-   - `https://www.farmassi.kr`
-3. JavaScript 키와 REST API 키의 **리다이렉트 URI**를 등록합니다. 도메인과 달리 여기는 요청 주소와 같아야 합니다.
-   - `http://localhost:5173/auth/callback` (로컬 Vite 포트가 다르면 그 포트)
-   - `https://farmassi.kr/auth/callback`
-   - `https://www.farmassi.kr/auth/callback`
-4. [카카오 로그인] → [동의항목]에서 닉네임·프로필 이미지를 설정합니다.
-5. `.env.local`에 JavaScript 키와 REST API 키를 넣습니다.
+2. REST API 키의 Redirect URI에 **Supabase 콜백만** 등록합니다.
+   - `https://pfysjhabkqwfytzpsbom.supabase.co/auth/v1/callback`
+3. REST API 키에서 **Client Secret을 활성화**하고 값을 복사합니다.
+4. [카카오 로그인] → [동의항목]에서 **닉네임**(`profile_nickname`), **프로필 사진**(`profile_image`)을 [설정]으로 켜 둡니다. 필수·선택 어느 쪽이든 됩니다. `account_email`은 비즈 앱이 아니면 요청하지 않습니다.
+5. Supabase Dashboard → Authentication → Providers → Kakao를 켭니다.
+   - Client ID: 카카오 REST API 키
+   - Client Secret: 카카오 Client Secret
+   - 이메일 없이 로그인 허용(Allow users without an email): ON (`account_email`을 안 쓰면 필수)
+6. Authentication → URL Configuration
+   - Site URL: `https://farmassi.kr`
+   - Redirect URLs: `http://localhost:5173/**`, `https://farmassi.kr/**`, `https://www.farmassi.kr/**`
 
-```bash
-VITE_KAKAO_JS_KEY=카카오_JavaScript_키
-KAKAO_REST_API_KEY=카카오_REST_API_키
-```
+7. 배송지 검색용 **네이버 지도**를 켭니다.
+   - [네이버 클라우드](https://console.ncloud.com) → Maps → Application에서 Dynamic Map, Geocoding, Reverse Geocoding을 선택합니다.
+   - Web 서비스 URL: `http://localhost`, `http://farmassi.kr`
+   - Client ID는 `.env.local`의 `VITE_NAVER_MAP_CLIENT_ID`에 넣습니다.
+   - Client Secret은 프론트에 넣지 말고 Edge Function 시크릿 `NAVER_MAP_CLIENT_SECRET`으로 등록합니다.
 
-6. 같은 REST API 키를 Edge Function 시크릿 `KAKAO_REST_API_KEY`로도 등록합니다. Client Secret을 켜 두었다면 함께 등록합니다.
-
-```bash
-npx supabase secrets set KAKAO_REST_API_KEY=... --project-ref pfysjhabkqwfytzpsbom
-```
-
-휴대폰 웹/PWA에서는 [카카오 JavaScript SDK 간편로그인](https://developers.kakao.com/docs/latest/ko/kakaologin/js)이 카카오톡 앱을 직접 엽니다. PC 웹은 카카오계정 로그인 화면으로 넘어갑니다.
-
-7. Authentication → Providers → Email에서 **공개 회원가입은 끄고**, 관리자 계정은 Dashboard에서 직접 생성합니다.
-8. SQL 또는 Table Editor로 해당 사용자의 `profiles.role` 을 `admin` 으로 변경합니다.
+8. Authentication → Providers → Email에서 **공개 회원가입은 끄고**, 관리자 계정은 Dashboard에서 직접 생성합니다.
+9. SQL 또는 Table Editor로 해당 사용자의 `profiles.role` 을 `admin` 으로 변경합니다.
 
 ```sql
 update public.profiles
@@ -60,7 +54,7 @@ update public.profiles
  where id = '<auth user uuid>';
 ```
 
-9. (선택) 웹 푸시용 VAPID 비밀키를 Edge Function 시크릿으로 등록합니다.
+10. (선택) 웹 푸시용 VAPID 비밀키를 Edge Function 시크릿으로 등록합니다.
 
 ```bash
 npx supabase secrets set VAPID_PUBLIC_KEY=... VAPID_PRIVATE_KEY=... --project-ref pfysjhabkqwfytzpsbom

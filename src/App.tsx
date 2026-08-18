@@ -6,6 +6,7 @@ import { AuthCallback } from './pages/auth/AuthCallback'
 import { AdminLogin } from './pages/auth/AdminLogin'
 import { FarmStore } from './pages/order/FarmStore'
 import { Checkout } from './pages/order/Checkout'
+import { OrderComplete } from './pages/order/OrderComplete'
 import { MyOrders } from './pages/me/MyOrders'
 import { MyOrderDetail } from './pages/me/MyOrderDetail'
 import { FarmApply } from './pages/farm/Apply'
@@ -43,6 +44,14 @@ export default function App() {
           element={
             <RequireAuth>
               <MyOrders />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/me/orders/:orderId/complete"
+          element={
+            <RequireAuth>
+              <OrderComplete />
             </RequireAuth>
           }
         />

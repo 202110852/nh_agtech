@@ -1,5 +1,4 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
-import { startKakaoTalkLogin } from './kakao'
 import { supabase } from './supabase'
 import type { Farm, FarmApplication, FarmMemberRole, Profile } from '../types/models'
 import type { Session, User } from '@supabase/supabase-js'
@@ -113,7 +112,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [hydrate])
 
   const signInWithKakao = useCallback(async (next?: string) => {
-    await startKakaoTalkLogin(next)
+    if (next) sessionStorage.setItem('farmassi-next', next)
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'kakao',
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+        scopes: 'profile_nickname profile_image',
+      },
+    })
+    if (error) throw error
   }, [])
 
   const signInWithEmail = useCallback(async (email: string, password: string) => {

@@ -29,3 +29,9 @@ body {
 .safe-area-bottom {
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
+
+.naver-map img,
+.naver-map canvas {
+  max-width: none !important;
+  max-height: none !important;
+}

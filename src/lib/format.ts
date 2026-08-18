@@ -2,6 +2,10 @@ export function formatPrice(price: number): string {
   return `₩${price.toLocaleString('ko-KR')}`
 }
 
+export function formatWon(price: number): string {
+  return `${price.toLocaleString('ko-KR')}원`
+}
+
 export function formatDateTime(value: string): string {
   return new Intl.DateTimeFormat('ko-KR', {
     timeZone: 'Asia/Seoul',
