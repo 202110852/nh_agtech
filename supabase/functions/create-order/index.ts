@@ -87,24 +87,32 @@ Deno.serve(async (req) => {
     )
     if (itemsError) return json({ error: itemsError.message }, 400)
 
-    if (body.saveAddress) {
-      await admin.from('saved_addresses').insert({
-        user_id: user.id,
-        recipient_name: body.recipient.name,
-        phone: body.recipient.phone,
-        zonecode: body.recipient.zonecode ?? null,
-        address: body.recipient.address,
-        address_detail: body.recipient.addressDetail ?? null,
-        is_default: true,
-        last_used_at: new Date().toISOString(),
-      })
-    } else {
+    const { data: savedRows } = await admin.from('saved_addresses').select('id, address, address_detail, zonecode').eq('user_id', user.id)
+    const sameAddress = (savedRows ?? []).find(
+      (row) =>
+        normalizeText(row.address) === normalizeText(body.recipient.address) &&
+        normalizeText(row.address_detail) === normalizeText(body.recipient.addressDetail) &&
+        normalizeText(row.zonecode) === normalizeText(body.recipient.zonecode),
+    )
+    const savedPayload = {
+      recipient_name: body.recipient.name,
+      phone: body.recipient.phone,
+      zonecode: body.recipient.zonecode ?? null,
+      address: body.recipient.address,
+      address_detail: body.recipient.addressDetail ?? null,
+      last_used_at: new Date().toISOString(),
+    }
+    if (sameAddress) {
       await admin
         .from('saved_addresses')
-        .update({ last_used_at: new Date().toISOString() })
-        .eq('user_id', user.id)
-        .eq('address', body.recipient.address)
-        .eq('recipient_name', body.recipient.name)
+        .update({ ...savedPayload, is_default: true })
+        .eq('id', sameAddress.id)
+    } else if (body.saveAddress) {
+      await admin.from('saved_addresses').insert({
+        ...savedPayload,
+        user_id: user.id,
+        is_default: true,
+      })
     }
 
     await notifyFarmMembers(admin, {
@@ -120,3 +128,7 @@ Deno.serve(async (req) => {
     return json({ error: error instanceof Error ? error.message : '주문에 실패했습니다.' }, 400)
   }
 })
+
+function normalizeText(value?: string | null) {
+  return (value ?? '').trim().replace(/\s+/g, ' ')
+}

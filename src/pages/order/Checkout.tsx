@@ -66,7 +66,7 @@ export function Checkout() {
           .eq('user_id', user.id)
           .order('is_default', { ascending: false })
           .order('last_used_at', { ascending: false })
-        const list = (addrRows as SavedAddress[]) ?? []
+        const list = uniqueSavedAddresses((addrRows as SavedAddress[]) ?? [])
         setAddresses(list)
         const def = list.find((a) => a.is_default) ?? list[0]
         if (def) applyAddress(def)
@@ -139,7 +139,7 @@ export function Checkout() {
                 addressDetail: form.address_detail,
               },
               requestMemo: form.request_memo,
-              saveAddress,
+              saveAddress: alreadySavedAddress(addresses, form) ? false : selectedAddressId === 'new' && saveAddress,
             })
             clearCart(farmSlug)
             await refresh()
@@ -245,15 +245,17 @@ export function Checkout() {
             value={form.request_memo}
             onChange={(request_memo) => setForm((p) => ({ ...p, request_memo }))}
           />
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={saveAddress}
-              onChange={(e) => setSaveAddress(e.target.checked)}
-              className="rounded accent-primary"
-            />
-            이 주소를 계정에 저장하고 다음에 사용
-          </label>
+          {selectedAddressId === 'new' && !alreadySavedAddress(addresses, form) && (
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={saveAddress}
+                onChange={(e) => setSaveAddress(e.target.checked)}
+                className="rounded accent-primary"
+              />
+              이 주소를 계정에 저장하고 다음에 사용
+            </label>
+          )}
         </Card>
 
         <Card className="bg-primary-light border-primary/20">
@@ -269,4 +271,37 @@ export function Checkout() {
       </form>
     </div>
   )
+}
+
+function normalizeAddressPart(value?: string | null) {
+  return (value ?? '').trim().replace(/\s+/g, ' ')
+}
+
+function addressKey(address: string, detail?: string | null, zonecode?: string | null) {
+  return `${normalizeAddressPart(address)}|${normalizeAddressPart(detail)}|${normalizeAddressPart(zonecode)}`
+}
+
+function alreadySavedAddress(
+  list: SavedAddress[],
+  form: { address: string; address_detail: string; zonecode: string },
+) {
+  const key = addressKey(form.address, form.address_detail, form.zonecode)
+  return list.some((addr) => addressKey(addr.address, addr.address_detail, addr.zonecode) === key)
+}
+
+function uniqueSavedAddresses(list: SavedAddress[]) {
+  const seen = new Map<string, SavedAddress>()
+  for (const addr of list) {
+    const key = addressKey(addr.address, addr.address_detail, addr.zonecode)
+    const prev = seen.get(key)
+    if (!prev) {
+      seen.set(key, addr)
+      continue
+    }
+    const addrUsed = addr.last_used_at ?? addr.created_at
+    const prevUsed = prev.last_used_at ?? prev.created_at
+    if (addr.is_default && !prev.is_default) seen.set(key, addr)
+    else if (addr.is_default === prev.is_default && addrUsed > prevUsed) seen.set(key, addr)
+  }
+  return [...seen.values()]
 }
