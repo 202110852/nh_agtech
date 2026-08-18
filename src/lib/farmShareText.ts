@@ -58,15 +58,32 @@ export function hasFarmShareDetails(farm: FarmShareInput) {
 }
 
 export function formatShareTextPhones(text: string) {
-  return text.replace(/^([☎️📱]\s*)(.+)$/gm, (_match, prefix: string, raw: string) => {
+  return text.replace(/^(?:☎️|📱)\s*(.+)$/gm, (_match, raw: string) => {
     const formatted = formatPhone(raw)
-    return `${prefix}${formatted || raw.trim()}`
+    return `📱 ${formatted || raw.trim()}`
   })
+}
+
+const LOCATION_LINE_RE = /^▶️\s*위치\s*:.*$/m
+const MAP_LINE_RE = /^▶️\s*길안내\s*:.*$/m
+
+export function formatShareTextAddress(text: string, farm: FarmShareInput) {
+  const address = fullAddress(farm.address ?? '', farm.address_detail, farm.address_zonecode)
+  if (!address) return text
+
+  const locationLine = `▶️ 위치 : ${address}`
+  if (LOCATION_LINE_RE.test(text)) return text.replace(LOCATION_LINE_RE, locationLine)
+  if (MAP_LINE_RE.test(text)) return text.replace(MAP_LINE_RE, `${locationLine}\n$&`)
+  return `${text.trimEnd()}\n\n${locationLine}`
+}
+
+export function formatFarmShareText(text: string, farm: FarmShareInput) {
+  return formatShareTextAddress(formatShareTextPhones(text), farm)
 }
 
 export function resolveFarmShareText(farm: FarmShareInput, origin?: string) {
   const text = farm.share_text?.trim() || buildFarmShareText(farm, origin)
-  return formatShareTextPhones(text)
+  return formatFarmShareText(text, farm)
 }
 
 export function buildFarmShareText(farm: FarmShareInput, origin?: string) {
@@ -98,7 +115,7 @@ export function buildFarmShareText(farm: FarmShareInput, origin?: string) {
   if (phone || mobile) {
     lines.push('')
     lines.push('문의전화')
-    if (phone) lines.push(`☎️ ${phone}`)
+    if (phone) lines.push(`📱 ${phone}`)
     if (mobile) lines.push(`📱 ${mobile}`)
   }
 

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Check, Copy, RotateCcw } from 'lucide-react'
 import { Button } from '../ui/Button'
 import { copyText } from '../../lib/clipboard'
-import { buildFarmShareText, formatShareTextPhones, type FarmShareInput } from '../../lib/farmShareText'
+import { buildFarmShareText, formatFarmShareText, type FarmShareInput } from '../../lib/farmShareText'
 
 export function FarmSharePreview({
   farm,
@@ -15,7 +15,7 @@ export function FarmSharePreview({
 }) {
   const [copied, setCopied] = useState(false)
   const generated = buildFarmShareText(farm)
-  const text = formatShareTextPhones(value || generated)
+  const text = formatFarmShareText(value || generated, farm)
   if (!text) return null
 
   async function handleCopy() {
