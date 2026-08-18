@@ -1,86 +1,67 @@
 import { Link } from 'react-router-dom'
 import { Card } from '../ui/Card'
-import { safeHttpUrl } from '../../lib/format'
-import {
-  farmLandingUrl,
-  farmProductLines,
-  farmShareLead,
-  hasFarmShareDetails,
-  telHref,
-  type FarmShareInput,
-} from '../../lib/farmShareText'
+import { KakaoSymbol } from './KakaoChannelButton'
+import { BRAND } from '../../config/brand'
+import { hasFarmShareDetails, resolveFarmShareText, type FarmShareInput } from '../../lib/farmShareText'
+
+function ownHost() {
+  try {
+    return new URL(BRAND.siteUrl).hostname.replace(/^www\./, '')
+  } catch {
+    return 'farmassi.kr'
+  }
+}
+
+function withKakaoInquiry(text: string, keyPrefix: string) {
+  const parts = text.split(/(?:💬\s*)?카카오톡 문의/)
+  if (parts.length === 1) return text
+  return parts.flatMap((part, index) => {
+    if (index === parts.length - 1) return [<span key={`${keyPrefix}-t-${index}`}>{part}</span>]
+    return [
+      <span key={`${keyPrefix}-t-${index}`}>{part}</span>,
+      <span key={`${keyPrefix}-k-${index}`} className="inline-flex items-baseline gap-0.5">
+        <KakaoSymbol size={14} fill="#FEE500" />
+        카카오톡 문의
+      </span>,
+    ]
+  })
+}
+
+function ShareTextBody({ text }: { text: string }) {
+  const chunks = text.split(/(https?:\/\/[^\s]+)/g)
+  return (
+    <p className="whitespace-pre-wrap break-all text-sm leading-7 text-gray-800">
+      {chunks.map((chunk, index) => {
+        if (!/^https?:\/\//i.test(chunk)) return <span key={index}>{withKakaoInquiry(chunk, String(index))}</span>
+        try {
+          const url = new URL(chunk)
+          if (url.hostname.replace(/^www\./, '') === ownHost()) {
+            return (
+              <Link key={index} to={`${url.pathname}${url.search}${url.hash}`} className="font-medium text-primary">
+                {chunk}
+              </Link>
+            )
+          }
+        } catch {
+          /* keep as external */
+        }
+        return (
+          <a key={index} href={chunk} target="_blank" rel="noreferrer" className="font-medium text-primary">
+            {chunk}
+          </a>
+        )
+      })}
+    </p>
+  )
+}
 
 export function FarmShareMessage({ farm }: { farm: FarmShareInput }) {
   if (!hasFarmShareDetails(farm)) return null
-
-  const lead = farmShareLead(farm.description)
-  const products = farmProductLines(farm.product_summary)
-  const phoneHref = telHref(farm.phone)
-  const mobileHref = telHref(farm.mobile_phone)
-  const mapHref = safeHttpUrl(farm.map_url)
-  const slug = farm.slug.trim()
-
+  const text = resolveFarmShareText(farm)
+  if (!text) return null
   return (
-    <Card className="space-y-3 text-sm leading-7 text-gray-800">
-      {lead ? <p className="whitespace-pre-wrap">{lead}</p> : null}
-      {farm.name.trim() ? <p>"{farm.name.trim()}" 입니다.</p> : null}
-      {products.length > 0 ? (
-        <ul className="space-y-0.5">
-          {products.map((item) => (
-            <li key={item}>🍇 {item}</li>
-          ))}
-        </ul>
-      ) : null}
-          {slug ? (
-            <div>
-              <p>👇 주문하러가기[클릭] 👇</p>
-              <Link to={`/farm/${slug}`} className="break-all font-medium text-primary">
-                {farmLandingUrl(slug)}
-              </Link>
-            </div>
-          ) : null}
-      {farm.phone?.trim() || farm.mobile_phone?.trim() ? (
-        <div>
-          <p>문의전화</p>
-          {farm.phone?.trim() ? (
-            <p>
-              ☎️{' '}
-              {phoneHref ? (
-                <a href={phoneHref} className="font-medium text-primary">
-                  {farm.phone.trim()}
-                </a>
-              ) : (
-                farm.phone.trim()
-              )}
-            </p>
-          ) : null}
-          {farm.mobile_phone?.trim() ? (
-            <p>
-              📱{' '}
-              {mobileHref ? (
-                <a href={mobileHref} className="font-medium text-primary">
-                  {farm.mobile_phone.trim()}
-                </a>
-              ) : (
-                farm.mobile_phone.trim()
-              )}
-            </p>
-          ) : null}
-        </div>
-      ) : null}
-      {farm.address?.trim() || mapHref ? (
-        <div>
-          {farm.address?.trim() ? <p>▶️ 위치 : {farm.address.trim()}</p> : null}
-          {mapHref ? (
-            <p>
-              ▶️ 길안내 :{' '}
-              <a href={mapHref} target="_blank" rel="noreferrer" className="break-all font-medium text-primary">
-                {mapHref}
-              </a>
-            </p>
-          ) : null}
-        </div>
-      ) : null}
+    <Card>
+      <ShareTextBody text={text} />
     </Card>
   )
 }

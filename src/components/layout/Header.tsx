@@ -16,7 +16,7 @@ export function Header({ title, subtitle, showBack, backTo, rightElement }: Head
   const { mobileSettingsItem } = useNavContext()
 
   const handleBack = () => {
-    if (backTo) navigate(backTo)
+    if (backTo) navigate(backTo, { replace: true })
     else navigate(-1)
   }
 

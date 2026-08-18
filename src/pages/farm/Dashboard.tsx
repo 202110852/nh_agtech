@@ -63,10 +63,10 @@ export function FarmDashboard() {
         title={farm.name}
         subtitle={farm.location ?? formatDate(farm.created_at)}
         showBack={isAdminView}
-        backTo="/admin/farms"
+        backTo={`/farm/${farm.slug}/landingpage`}
         rightElement={
           <>
-            <Link to={`/farm/${farm.slug}`} className="flex items-center gap-1 text-sm font-medium text-primary">
+            <Link to={`/farm/${farm.slug}/landingpage`} className="flex items-center gap-1 text-sm font-medium text-primary">
               주문 페이지
               <ExternalLink className="h-3.5 w-3.5" />
             </Link>

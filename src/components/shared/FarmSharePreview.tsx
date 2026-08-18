@@ -1,12 +1,21 @@
 import { useState } from 'react'
-import { Check, Copy } from 'lucide-react'
+import { Check, Copy, RotateCcw } from 'lucide-react'
 import { Button } from '../ui/Button'
 import { copyText } from '../../lib/clipboard'
 import { buildFarmShareText, type FarmShareInput } from '../../lib/farmShareText'
 
-export function FarmSharePreview({ farm }: { farm: FarmShareInput }) {
+export function FarmSharePreview({
+  farm,
+  value,
+  onChange,
+}: {
+  farm: FarmShareInput
+  value: string
+  onChange: (value: string) => void
+}) {
   const [copied, setCopied] = useState(false)
-  const text = buildFarmShareText(farm)
+  const generated = buildFarmShareText(farm)
+  const text = value || generated
   if (!text) return null
 
   async function handleCopy() {
@@ -20,14 +29,23 @@ export function FarmSharePreview({ farm }: { farm: FarmShareInput }) {
     <div className="space-y-2 rounded-xl border border-gray-100 bg-gray-50 p-3">
       <div className="flex items-center justify-between gap-2">
         <p className="text-xs font-medium text-muted">안내 문자</p>
-        <Button type="button" size="sm" variant="outline" onClick={() => void handleCopy()}>
-          {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-          {copied ? '복사됨' : '복사'}
-        </Button>
+        <div className="flex gap-1">
+          <Button type="button" size="sm" variant="ghost" onClick={() => onChange(generated)}>
+            <RotateCcw className="h-4 w-4" />
+            다시 만들기
+          </Button>
+          <Button type="button" size="sm" variant="outline" onClick={() => void handleCopy()}>
+            {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+            {copied ? '복사됨' : '복사'}
+          </Button>
+        </div>
       </div>
-      <pre className="whitespace-pre-wrap break-all rounded-xl bg-white px-3 py-3 text-sm leading-7 text-gray-800">
-        {text}
-      </pre>
+      <textarea
+        value={text}
+        onChange={(e) => onChange(e.target.value)}
+        rows={12}
+        className="min-h-40 w-full resize-y rounded-xl border border-gray-200 bg-white px-3 py-3 text-sm leading-7 text-gray-800 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
+      />
     </div>
   )
 }

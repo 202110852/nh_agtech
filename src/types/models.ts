@@ -68,7 +68,10 @@ export interface Farm {
   phone: string | null
   mobile_phone: string | null
   address: string | null
+  address_zonecode: string | null
+  address_detail: string | null
   map_url: string | null
+  share_text: string | null
   landing_blocks: FarmLandingBlock[]
   bank_name: string
   account_number: string

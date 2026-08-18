@@ -22,11 +22,20 @@ export interface AddressValue {
 interface AddressPickerProps {
   value: AddressValue
   onChange: (value: AddressValue) => void
+  emptyHint?: string
+  searchTitle?: string
+  detailPlaceholder?: string
 }
 
 type OverlayView = 'search' | 'confirm'
 
-export function AddressPicker({ value, onChange }: AddressPickerProps) {
+export function AddressPicker({
+  value,
+  onChange,
+  emptyHint = '배송지를 현재 위치 또는 검색으로 설정해 주세요',
+  searchTitle = '배송지 검색',
+  detailPlaceholder = '동·호수, 공동현관 비밀번호 등',
+}: AddressPickerProps) {
   const searchId = useId()
   const [open, setOpen] = useState(false)
   const [view, setView] = useState<OverlayView>('search')
@@ -182,7 +191,7 @@ export function AddressPicker({ value, onChange }: AddressPickerProps) {
         ) : (
           <p className="flex items-center gap-2 text-sm text-muted">
             <MapPin className="h-4 w-4 shrink-0" />
-            배송지를 현재 위치 또는 검색으로 설정해 주세요
+            {emptyHint}
           </p>
         )}
       </button>
@@ -191,7 +200,7 @@ export function AddressPicker({ value, onChange }: AddressPickerProps) {
         label="상세주소"
         value={value.addressDetail}
         onChange={(e) => onChange({ ...value, addressDetail: e.target.value })}
-        placeholder="동·호수, 공동현관 비밀번호 등"
+        placeholder={detailPlaceholder}
       />
 
       {open
@@ -207,7 +216,7 @@ export function AddressPicker({ value, onChange }: AddressPickerProps) {
               <X className="h-5 w-5" />
             </button>
             <h2 className="flex-1 text-base font-bold">
-              {view === 'confirm' ? '위치 확인' : '배송지 검색'}
+              {view === 'confirm' ? '위치 확인' : searchTitle}
             </h2>
           </div>
 

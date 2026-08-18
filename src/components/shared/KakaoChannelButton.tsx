@@ -23,11 +23,11 @@ export function KakaoChannelButton({ href, label = '카카오톡 채널로 연�
   )
 }
 
-function KakaoSymbol() {
+export function KakaoSymbol({ size = 18, fill = '#000' }: { size?: number; fill?: string }) {
   return (
-    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden>
+    <svg width={size} height={size} viewBox="0 0 18 18" fill="none" aria-hidden className="inline-block shrink-0 translate-y-[1px]">
       <path
-        fill="#000"
+        fill={fill}
         fillRule="evenodd"
         d="M9 1.2C4.306 1.2.5 4.29.5 8.1c0 2.4 1.56 4.51 3.93 5.73L3.4 17.4c-.05.2.16.36.34.26l4.18-2.77c.35.05.71.07 1.08.07 4.694 0 8.5-3.09 8.5-6.9S13.694 1.2 9 1.2Z"
       />

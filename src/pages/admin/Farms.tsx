@@ -6,6 +6,7 @@ import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog'
 import { Input, Select, Textarea } from '../../components/ui/Field'
+import { PhoneField } from '../../components/ui/PhoneField'
 import { ErrorText } from '../../components/ui/Feedback'
 import {
   createLandingBlock,
@@ -15,9 +16,11 @@ import {
   cleanupLandingImages,
   type LandingBlockDraft,
 } from '../../components/shared/LandingBlocksField'
+import { AddressPicker } from '../../components/shared/AddressPicker'
 import { FarmSharePreview } from '../../components/shared/FarmSharePreview'
 import { adminNavItems } from '../../config/adminNav'
 import { kakaoChannelHref, safeHttpUrl } from '../../lib/format'
+import { resolveFarmShareText } from '../../lib/farmShareText'
 import { toSlug } from '../../lib/slug'
 import { supabase } from '../../lib/supabase'
 import { parseLandingBlocks, type Farm, type Profile } from '../../types/models'
@@ -33,7 +36,10 @@ interface FarmForm {
   phone: string
   mobile_phone: string
   address: string
+  address_zonecode: string
+  address_detail: string
   map_url: string
+  share_text: string
   kakao_channel_url: string
   bank_name: string
   account_number: string
@@ -51,7 +57,10 @@ const emptyForm: FarmForm = {
   phone: '',
   mobile_phone: '',
   address: '',
+  address_zonecode: '',
+  address_detail: '',
   map_url: '',
+  share_text: '',
   kakao_channel_url: '',
   bank_name: '',
   account_number: '',
@@ -103,6 +112,12 @@ const BANKS = [
 ] as const
 
 const BANK_CUSTOM = '__custom__'
+
+const farmAddressPickerCopy = {
+  emptyHint: '농가 위치를 현재 위치 또는 검색으로 설정해 주세요',
+  searchTitle: '농가 주소 검색',
+  detailPlaceholder: '건물명, 동·호수 등',
+} as const
 
 function BankField({
   value,
@@ -316,7 +331,23 @@ export function AdminFarms() {
         phone: form.phone.trim() || null,
         mobile_phone: form.mobile_phone.trim() || null,
         address: form.address.trim() || null,
+        address_zonecode: form.address_zonecode.trim() || null,
+        address_detail: form.address_detail.trim() || null,
         map_url: safeHttpUrl(form.map_url),
+        share_text:
+          resolveFarmShareText({
+            name: form.name,
+            slug,
+            description: form.description,
+            product_summary: form.product_summary,
+            phone: form.phone,
+            mobile_phone: form.mobile_phone,
+            address: form.address,
+            address_zonecode: form.address_zonecode,
+            address_detail: form.address_detail,
+            map_url: form.map_url,
+            share_text: form.share_text,
+          }) || null,
         bank_name: form.bank_name.trim(),
         account_number: form.account_number.trim(),
         account_holder: form.account_holder.trim(),
@@ -440,23 +471,31 @@ export function AdminFarms() {
               onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
               placeholder="전화주셔서 감사합니다. 세계가 인정한 믿고 먹을 수 있는 포도즙"
             />
-            <Input
+            <PhoneField
               label="전화번호"
               value={form.phone}
-              onChange={(e) => setForm((prev) => ({ ...prev, phone: e.target.value }))}
-              placeholder="031-585-0068"
+              onChange={(phone) => setForm((prev) => ({ ...prev, phone }))}
             />
-            <Input
+            <PhoneField
               label="휴대폰"
               value={form.mobile_phone}
-              onChange={(e) => setForm((prev) => ({ ...prev, mobile_phone: e.target.value }))}
-              placeholder="010-0000-0000"
+              onChange={(mobile_phone) => setForm((prev) => ({ ...prev, mobile_phone }))}
             />
-            <Input
-              label="주소"
-              value={form.address}
-              onChange={(e) => setForm((prev) => ({ ...prev, address: e.target.value }))}
-              placeholder="경기 가평군 상면 수역길 69"
+            <AddressPicker
+              value={{
+                zonecode: form.address_zonecode,
+                address: form.address,
+                addressDetail: form.address_detail,
+              }}
+              onChange={(next) =>
+                setForm((prev) => ({
+                  ...prev,
+                  address_zonecode: next.zonecode,
+                  address: next.address,
+                  address_detail: next.addressDetail,
+                }))
+              }
+              {...farmAddressPickerCopy}
             />
             <Input
               label="네이버지도 길안내"
@@ -473,8 +512,12 @@ export function AdminFarms() {
                 phone: form.phone,
                 mobile_phone: form.mobile_phone,
                 address: form.address,
+                address_zonecode: form.address_zonecode,
+                address_detail: form.address_detail,
                 map_url: form.map_url,
               }}
+              value={form.share_text}
+              onChange={(share_text) => setForm((prev) => ({ ...prev, share_text }))}
             />
             <LandingBlocksField
               blocks={createLanding}
@@ -560,23 +603,31 @@ export function AdminFarms() {
                   onChange={(e) => setEditing({ ...editing, description: e.target.value })}
                   placeholder="전화주셔서 감사합니다. 세계가 인정한 믿고 먹을 수 있는 포도즙"
                 />
-                <Input
+                <PhoneField
                   label="전화번호"
                   value={editing.phone ?? ''}
-                  onChange={(e) => setEditing({ ...editing, phone: e.target.value })}
-                  placeholder="031-585-0068"
+                  onChange={(phone) => setEditing({ ...editing, phone })}
                 />
-                <Input
+                <PhoneField
                   label="휴대폰"
                   value={editing.mobile_phone ?? ''}
-                  onChange={(e) => setEditing({ ...editing, mobile_phone: e.target.value })}
-                  placeholder="010-0000-0000"
+                  onChange={(mobile_phone) => setEditing({ ...editing, mobile_phone })}
                 />
-                <Input
-                  label="주소"
-                  value={editing.address ?? ''}
-                  onChange={(e) => setEditing({ ...editing, address: e.target.value })}
-                  placeholder="경기 가평군 상면 수역길 69"
+                <AddressPicker
+                  value={{
+                    zonecode: editing.address_zonecode ?? '',
+                    address: editing.address ?? '',
+                    addressDetail: editing.address_detail ?? '',
+                  }}
+                  onChange={(next) =>
+                    setEditing({
+                      ...editing,
+                      address_zonecode: next.zonecode,
+                      address: next.address,
+                      address_detail: next.addressDetail,
+                    })
+                  }
+                  {...farmAddressPickerCopy}
                 />
                 <Input
                   label="네이버지도 길안내"
@@ -593,8 +644,12 @@ export function AdminFarms() {
                     phone: editing.phone,
                     mobile_phone: editing.mobile_phone,
                     address: editing.address,
+                    address_zonecode: editing.address_zonecode,
+                    address_detail: editing.address_detail,
                     map_url: editing.map_url,
                   }}
+                  value={editing.share_text ?? ''}
+                  onChange={(share_text) => setEditing({ ...editing, share_text })}
                 />
                 <LandingBlocksField
                   blocks={editLanding}
@@ -652,7 +707,23 @@ export function AdminFarms() {
                             phone: editing.phone?.trim() || null,
                             mobile_phone: editing.mobile_phone?.trim() || null,
                             address: editing.address?.trim() || null,
+                            address_zonecode: editing.address_zonecode?.trim() || null,
+                            address_detail: editing.address_detail?.trim() || null,
                             map_url: safeHttpUrl(editing.map_url),
+                            share_text:
+                              resolveFarmShareText({
+                                name: editing.name,
+                                slug,
+                                description: editing.description,
+                                product_summary: editing.product_summary,
+                                phone: editing.phone,
+                                mobile_phone: editing.mobile_phone,
+                                address: editing.address,
+                                address_zonecode: editing.address_zonecode,
+                                address_detail: editing.address_detail,
+                                map_url: editing.map_url,
+                                share_text: editing.share_text,
+                              }) || null,
                             landing_blocks,
                             bank_name: editing.bank_name,
                             account_number: editing.account_number,
