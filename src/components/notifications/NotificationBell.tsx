@@ -1,15 +1,18 @@
 import { Bell } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/auth'
 import { formatDateTime } from '../../lib/format'
 import type { AppNotification } from '../../types/models'
 
+const PANEL_MARGIN = 12
+
 export function NotificationBell({ farmPath = '/manage/orders' }: { farmPath?: string }) {
   const { user } = useAuth()
   const [open, setOpen] = useState(false)
   const [items, setItems] = useState<AppNotification[]>([])
+  const panelRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (!user) return
@@ -48,6 +51,33 @@ export function NotificationBell({ farmPath = '/manage/orders' }: { farmPath?: s
     }
   }, [user])
 
+  useLayoutEffect(() => {
+    const panel = panelRef.current
+    if (!open || !panel) return
+
+    function pin() {
+      if (!panel) return
+      panel.style.transform = ''
+      const rect = panel.getBoundingClientRect()
+      const viewWidth = window.innerWidth
+      let shift = 0
+      if (rect.right > viewWidth - PANEL_MARGIN) {
+        shift -= rect.right - (viewWidth - PANEL_MARGIN)
+      }
+      if (rect.left + shift < PANEL_MARGIN) {
+        shift += PANEL_MARGIN - (rect.left + shift)
+      }
+      panel.style.transform = shift ? `translateX(${shift}px)` : ''
+    }
+
+    pin()
+    window.addEventListener('resize', pin)
+    return () => {
+      window.removeEventListener('resize', pin)
+      panel.style.transform = ''
+    }
+  }, [open])
+
   const unread = items.filter((item) => !item.is_read).length
 
   async function markAllRead() {
@@ -73,7 +103,10 @@ export function NotificationBell({ farmPath = '/manage/orders' }: { farmPath?: s
         )}
       </button>
       {open && (
-        <div className="absolute right-0 mt-2 w-80 max-w-[90vw] rounded-2xl border border-gray-100 bg-white shadow-lg z-50">
+        <div
+          ref={panelRef}
+          className="absolute right-0 z-50 mt-2 w-80 max-w-[calc(100vw-1.5rem)] rounded-2xl border border-gray-100 bg-white shadow-lg"
+        >
           <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
             <p className="text-sm font-semibold">알림</p>
             <button type="button" className="text-xs text-muted" onClick={() => setOpen(false)}>

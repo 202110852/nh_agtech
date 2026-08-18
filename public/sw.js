@@ -1,9 +1,36 @@
+// 빌드 시 git 커밋 해시로 치환됩니다. 값이 바뀌면 설치된 PWA가 새 서비스 워커를 받습니다.
+const SW_VERSION = '__GIT_COMMIT__'
+
 self.addEventListener('install', (event) => {
   event.waitUntil(self.skipWaiting())
 })
 
 self.addEventListener('activate', (event) => {
-  event.waitUntil(self.clients.claim())
+  event.waitUntil(
+    (async () => {
+      const keys = await caches.keys()
+      await Promise.all(keys.map((key) => caches.delete(key)))
+      await self.clients.claim()
+    })(),
+  )
+})
+
+self.addEventListener('message', (event) => {
+  if (event.data === 'SKIP_WAITING') self.skipWaiting()
+})
+
+self.addEventListener('fetch', (event) => {
+  if (event.request.method !== 'GET') return
+
+  if (event.request.mode === 'navigate') {
+    event.respondWith(fetch(event.request, { cache: 'no-store' }))
+    return
+  }
+
+  const url = new URL(event.request.url)
+  if (url.origin === self.location.origin && (url.pathname === '/index.html' || url.pathname === '/sw.js')) {
+    event.respondWith(fetch(event.request, { cache: 'no-store' }))
+  }
 })
 
 self.addEventListener('push', (event) => {

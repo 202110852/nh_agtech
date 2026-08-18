@@ -21,9 +21,36 @@ export function isPushSupported() {
   return 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window
 }
 
+let registrationPromise: Promise<ServiceWorkerRegistration | null> | null = null
+
 export async function registerServiceWorker() {
   if (!('serviceWorker' in navigator)) return null
-  return navigator.serviceWorker.register('/sw.js')
+  if (registrationPromise) return registrationPromise
+
+  registrationPromise = (async () => {
+    const registration = await navigator.serviceWorker.register('/sw.js', {
+      updateViaCache: 'none',
+    })
+
+    const requestUpdate = () => {
+      void registration.update()
+    }
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') requestUpdate()
+    })
+    window.addEventListener('focus', requestUpdate)
+
+    if (navigator.serviceWorker.controller) {
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        window.location.reload()
+      })
+    }
+
+    return registration
+  })()
+
+  return registrationPromise
 }
 
 export async function subscribePush() {
