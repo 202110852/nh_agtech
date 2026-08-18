@@ -8,7 +8,7 @@ import type { AppNotification } from '../../types/models'
 
 const PANEL_MARGIN = 12
 
-export function NotificationBell({ farmPath = '/manage/orders' }: { farmPath?: string }) {
+export function NotificationBell({ farmPath }: { farmPath: string }) {
   const { user } = useAuth()
   const [open, setOpen] = useState(false)
   const [items, setItems] = useState<AppNotification[]>([])

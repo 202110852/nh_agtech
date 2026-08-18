@@ -22,18 +22,9 @@ export function useFarmWorkspace() {
   return ctx
 }
 
-export function FarmOwnerLayout() {
-  const { currentFarm } = useAuth()
-  if (!currentFarm) return null
-  return (
-    <FarmWorkspaceProvider farm={currentFarm} basePath="/manage" isAdminView={false}>
-      <FarmShell />
-    </FarmWorkspaceProvider>
-  )
-}
-
 export function AdminFarmLayout() {
   const { farmId = '' } = useParams()
+  const { isAdmin } = useAuth()
   const [farm, setFarm] = useState<Farm | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -56,10 +47,10 @@ export function AdminFarmLayout() {
   }, [farmId])
 
   if (loading) return <PageSpinner />
-  if (!farm) return <Navigate to="/admin/farms" replace />
+  if (!farm) return <Navigate to={isAdmin ? '/admin/farms' : '/'} replace />
 
   return (
-    <FarmWorkspaceProvider farm={farm} basePath={`/admin/farms/${farm.id}`} isAdminView>
+    <FarmWorkspaceProvider farm={farm} basePath={`/admin/farms/${farm.id}`} isAdminView={isAdmin}>
       <FarmShell />
     </FarmWorkspaceProvider>
   )

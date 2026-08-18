@@ -1,5 +1,5 @@
 import { useEffect, type ReactNode } from 'react'
-import { Navigate, useLocation } from 'react-router-dom'
+import { Navigate, useLocation, useParams } from 'react-router-dom'
 import { useAuth } from '../../lib/auth'
 import { PageSpinner } from '../ui/Feedback'
 import { dismissPath, useLoginSheet } from './LoginSheet'
@@ -27,8 +27,8 @@ export function RequireAdmin({ children }: { children: ReactNode }) {
   return children
 }
 
-export function RequireFarm({ children }: { children: ReactNode }) {
-  const { loading, user, isFarmUser } = useAuth()
+export function RedirectToFarmWorkspace({ suffix }: { suffix?: string }) {
+  const { loading, user, isAdmin, currentFarm } = useAuth()
   const location = useLocation()
   const { openLogin } = useLoginSheet()
   const next = `${location.pathname}${location.search}`
@@ -40,6 +40,32 @@ export function RequireFarm({ children }: { children: ReactNode }) {
 
   if (loading) return <PageSpinner />
   if (!user) return <div className="min-h-dvh bg-surface" />
-  if (isFarmUser) return children
+
+  const pathSuffix =
+    suffix ?? (location.pathname.startsWith('/manage') ? location.pathname.replace(/^\/manage/, '') : '')
+  if (currentFarm) {
+    return <Navigate to={`/admin/farms/${currentFarm.id}${pathSuffix}${location.search}`} replace />
+  }
+  if (isAdmin) return <Navigate to="/admin" replace />
+  return <Navigate to="/" replace />
+}
+
+export function RequireFarmWorkspace({ children }: { children: ReactNode }) {
+  const { loading, user, isAdmin, memberships, currentFarm } = useAuth()
+  const { farmId = '' } = useParams()
+  const location = useLocation()
+  const { openLogin } = useLoginSheet()
+  const next = `${location.pathname}${location.search}`
+
+  useEffect(() => {
+    if (loading || user) return
+    openLogin({ next, dismissTo: '/' })
+  }, [loading, user, next, openLogin])
+
+  if (loading) return <PageSpinner />
+  if (!user) return <div className="min-h-dvh bg-surface" />
+  if (isAdmin) return children
+  if (memberships.some((row) => row.farm_id === farmId)) return children
+  if (currentFarm) return <Navigate to={`/admin/farms/${currentFarm.id}`} replace />
   return <Navigate to="/" replace />
 }

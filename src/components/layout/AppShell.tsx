@@ -14,9 +14,11 @@ export function AppShell({
   children,
   navItems,
   roleLabel,
-  settingsPath = '/manage/settings',
+  settingsPath,
 }: AppShellProps) {
-  const mobileSettingsItem = navItems.find((item) => item.to === settingsPath)
+  const mobileSettingsItem = settingsPath
+    ? navItems.find((item) => item.to === settingsPath)
+    : undefined
   const bottomNavItems = mobileSettingsItem
     ? navItems.filter((item) => item.to !== settingsPath)
     : navItems

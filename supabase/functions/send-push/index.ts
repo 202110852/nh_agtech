@@ -18,7 +18,7 @@ Deno.serve(async (req) => {
   await sendPush((subs ?? []) as { endpoint: string; p256dh: string; auth: string }[], {
     title: body.title ?? '팜어시',
     body: body.body ?? '알림이 도착했습니다.',
-    url: body.url ?? '/manage',
+    url: body.url ?? '/admin',
   })
 
   return json({ ok: true, sent: (subs ?? []).length })
