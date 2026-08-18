@@ -89,7 +89,7 @@ export function Landing() {
                   )}
                   <Link to={`/farm/${farm.slug}/landingpage`}>
                     <Button className="mt-4" fullWidth>
-                      주문하기
+                      보러가기
                     </Button>
                   </Link>
                 </Card>

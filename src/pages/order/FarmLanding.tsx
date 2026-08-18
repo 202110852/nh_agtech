@@ -4,7 +4,6 @@ import { Link, useParams } from 'react-router-dom'
 import { Header } from '../../components/layout/Header'
 import { useLoginSheet } from '../../components/auth/LoginSheet'
 import { KakaoChannelButton } from '../../components/shared/KakaoChannelButton'
-import { FarmShareMessage } from '../../components/shared/FarmShareMessage'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
 import { PageSpinner } from '../../components/ui/Feedback'
@@ -12,7 +11,6 @@ import { useAuth } from '../../lib/auth'
 import { kakaoChannelHref } from '../../lib/format'
 import { supabase } from '../../lib/supabase'
 import { parseLandingBlocks, type Farm } from '../../types/models'
-import { hasFarmShareDetails } from '../../lib/farmShareText'
 
 export function FarmLanding() {
   const { farmSlug = '' } = useParams()
@@ -70,7 +68,7 @@ export function FarmLanding() {
             {blocks.map((block) => (
               <Card key={block.id} className={block.image_url ? 'overflow-hidden p-0' : ''}>
                 {block.image_url ? (
-                  <img src={block.image_url} alt="" className="aspect-[4/3] w-full object-cover" />
+                  <img src={block.image_url} alt="" className="block w-full h-auto" />
                 ) : null}
                 {block.body ? (
                   <p
@@ -84,7 +82,7 @@ export function FarmLanding() {
               </Card>
             ))}
           </section>
-        ) : hasFarmShareDetails(farm) ? null : (
+        ) : (
           <>
             <div className="rounded-2xl bg-primary p-6 text-white">
               <div className="flex items-center gap-2 mb-2">
@@ -104,8 +102,6 @@ export function FarmLanding() {
             ) : null}
           </>
         )}
-
-        <FarmShareMessage farm={farm} />
 
         {kakaoHref ? (
           <Card>
