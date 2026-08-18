@@ -1,6 +1,10 @@
 import { Minus, Plus } from 'lucide-react'
 import { useLayoutEffect, useRef, type ReactNode } from 'react'
-import type { Product } from '../../types/models'
+import {
+  PRODUCT_SALE_STATUS_LABEL,
+  productSaleStatus,
+  type Product,
+} from '../../types/models'
 import { formatPrice, productGradient } from '../../lib/format'
 import { Card } from '../ui/Card'
 
@@ -52,20 +56,31 @@ function FitTwoLineTitle({ text }: { text: string }) {
 }
 
 export function ProductCard({ product, quantity = 0, onChangeQuantity, extra }: ProductCardProps) {
+  const status = productSaleStatus(product)
+  const badge = status === 'on_sale' ? null : PRODUCT_SALE_STATUS_LABEL[status]
+  const canOrder = status === 'on_sale'
+
   return (
     <Card className="flex h-full flex-col overflow-hidden p-0">
-      {product.image_url ? (
-        <img src={product.image_url} alt={product.name} draggable={false} className="h-36 w-full shrink-0 object-cover" />
-      ) : (
-        <div className={`h-36 shrink-0 bg-gradient-to-br ${productGradient(product.id)}`} />
-      )}
+      <div className="relative h-36 shrink-0">
+        {product.image_url ? (
+          <img src={product.image_url} alt={product.name} draggable={false} className="h-full w-full object-cover" />
+        ) : (
+          <div className={`h-full bg-gradient-to-br ${productGradient(product.id)}`} />
+        )}
+        {badge && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/45">
+            <span className="rounded-full bg-white px-3 py-1 text-sm font-semibold text-gray-900">{badge}</span>
+          </div>
+        )}
+      </div>
       <div className="flex flex-1 flex-col p-4">
         <FitTwoLineTitle text={product.name} />
         <p className="mt-0.5 min-h-5 truncate text-sm text-muted">{product.unit || '\u00a0'}</p>
         <p className="mt-2 min-h-10 line-clamp-2 text-sm text-gray-600">{product.description || '\u00a0'}</p>
         <p className="mt-2 text-lg font-bold text-primary">{formatPrice(product.price)}</p>
         {extra}
-        {!extra && onChangeQuantity && (
+        {!extra && onChangeQuantity && canOrder && (
           <div className="mt-3 flex items-center justify-between">
             <span className="text-xs text-muted">수량</span>
             <div className="flex items-center gap-2">

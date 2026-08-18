@@ -36,7 +36,7 @@ Deno.serve(async (req) => {
       .from('products')
       .select('*')
       .eq('farm_id', farm.id)
-      .eq('is_active', true)
+      .eq('sale_status', 'on_sale')
       .in('id', productIds)
 
     const productMap = new Map((products ?? []).map((p) => [p.id as string, p]))

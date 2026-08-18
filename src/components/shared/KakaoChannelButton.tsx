@@ -1,12 +1,16 @@
+import { kakaoChannelChatHref } from '../../lib/format'
+
 interface KakaoChannelButtonProps {
   href: string
   label?: string
 }
 
 export function KakaoChannelButton({ href, label = '카카오톡 채널로 연결' }: KakaoChannelButtonProps) {
+  const chatHref = kakaoChannelChatHref(href)
+  if (!chatHref) return null
   return (
     <a
-      href={href}
+      href={chatHref}
       target="_blank"
       rel="noopener noreferrer"
       className="relative flex h-[45px] w-full items-center justify-center rounded-[12px] bg-[#FEE500] text-[15px] font-medium text-black/85 hover:bg-[#F5DC00]"

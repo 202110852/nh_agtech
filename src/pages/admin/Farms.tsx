@@ -5,12 +5,22 @@ import { Header } from '../../components/layout/Header'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog'
-import { Input, Textarea } from '../../components/ui/Field'
+import { Input, Select, Textarea } from '../../components/ui/Field'
 import { ErrorText } from '../../components/ui/Feedback'
+import {
+  createLandingBlock,
+  draftsFromLandingBlocks,
+  LandingBlocksField,
+  persistLandingBlocks,
+  cleanupLandingImages,
+  type LandingBlockDraft,
+} from '../../components/shared/LandingBlocksField'
+import { FarmSharePreview } from '../../components/shared/FarmSharePreview'
 import { adminNavItems } from '../../config/adminNav'
-import { kakaoChannelHref } from '../../lib/format'
+import { kakaoChannelHref, safeHttpUrl } from '../../lib/format'
+import { toSlug } from '../../lib/slug'
 import { supabase } from '../../lib/supabase'
-import type { Farm, Profile } from '../../types/models'
+import { parseLandingBlocks, type Farm, type Profile } from '../../types/models'
 
 type ProfileOption = Pick<Profile, 'id' | 'display_name' | 'phone' | 'avatar_url'>
 
@@ -20,6 +30,10 @@ interface FarmForm {
   location: string
   product_summary: string
   description: string
+  phone: string
+  mobile_phone: string
+  address: string
+  map_url: string
   kakao_channel_url: string
   bank_name: string
   account_number: string
@@ -34,6 +48,10 @@ const emptyForm: FarmForm = {
   location: '',
   product_summary: '',
   description: '',
+  phone: '',
+  mobile_phone: '',
+  address: '',
+  map_url: '',
   kakao_channel_url: '',
   bank_name: '',
   account_number: '',
@@ -59,17 +77,82 @@ const RESERVED_SLUGS = new Set([
   'store',
 ])
 
-function toSlug(name: string) {
-  const base = name
-    .toLowerCase()
-    .trim()
-    .replace(/\s+/g, '-')
-    .replace(/[^a-z0-9가-힣-]/g, '')
-  return base || 'farm'
+const BANKS = [
+  '국민은행',
+  '신한은행',
+  '우리은행',
+  '하나은행',
+  'NH농협은행',
+  '기업은행',
+  '카카오뱅크',
+  '토스뱅크',
+  '케이뱅크',
+  '부산은행',
+  'iM뱅크',
+  '경남은행',
+  '광주은행',
+  '전북은행',
+  '제주은행',
+  '수협은행',
+  'SC제일은행',
+  '한국씨티은행',
+  '산업은행',
+  '우체국',
+  '새마을금고',
+  '신협',
+] as const
+
+const BANK_CUSTOM = '__custom__'
+
+function BankField({
+  value,
+  onChange,
+  required,
+}: {
+  value: string
+  onChange: (value: string) => void
+  required?: boolean
+}) {
+  const listed = BANKS.includes(value as (typeof BANKS)[number])
+  const selectValue = listed ? value : BANK_CUSTOM
+
+  return (
+    <div className="space-y-2">
+      <Select
+        label="은행"
+        value={selectValue}
+        onChange={(e) => {
+          const next = e.target.value
+          if (next === BANK_CUSTOM) {
+            onChange(listed ? '' : value)
+            return
+          }
+          onChange(next)
+        }}
+        required={required}
+      >
+        <option value={BANK_CUSTOM}>직접입력</option>
+        {BANKS.map((bank) => (
+          <option key={bank} value={bank}>
+            {bank}
+          </option>
+        ))}
+      </Select>
+      {selectValue === BANK_CUSTOM && (
+        <Input
+          label="은행명"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="은행명을 입력하세요"
+          required={required}
+        />
+      )}
+    </div>
+  )
 }
 
 function uniqueSlug(name: string, taken: Set<string>, current?: string) {
-  const base = toSlug(name)
+  const base = toSlug(name) || 'farm'
   const blocked = (slug: string) => slug !== current && (taken.has(slug) || RESERVED_SLUGS.has(slug))
   if (!blocked(base)) return base
   return `${base}-${Math.random().toString(36).slice(2, 8)}`
@@ -158,6 +241,8 @@ export function AdminFarms() {
   const [bindUserId, setBindUserId] = useState('')
   const [showCreate, setShowCreate] = useState(false)
   const [form, setForm] = useState<FarmForm>(emptyForm)
+  const [createLanding, setCreateLanding] = useState<LandingBlockDraft[]>([createLandingBlock()])
+  const [editLanding, setEditLanding] = useState<LandingBlockDraft[]>([createLandingBlock()])
   const [slugTouched, setSlugTouched] = useState(false)
   const [error, setError] = useState('')
   const [pending, setPending] = useState(false)
@@ -172,7 +257,12 @@ export function AdminFarms() {
       supabase.from('farms').select('*').order('created_at', { ascending: false }),
       supabase.from('profiles').select('id, display_name, phone, avatar_url').order('display_name'),
     ])
-    setFarms((farmRes.data as Farm[]) ?? [])
+    setFarms(
+      ((farmRes.data as Farm[]) ?? []).map((farm) => ({
+        ...farm,
+        landing_blocks: parseLandingBlocks(farm.landing_blocks),
+      })),
+    )
     setProfiles((profileRes.data as ProfileOption[]) ?? [])
   }
 
@@ -182,6 +272,7 @@ export function AdminFarms() {
 
   function resetCreate() {
     setForm(emptyForm)
+    setCreateLanding([createLandingBlock()])
     setSlugTouched(false)
     setShowCreate(false)
   }
@@ -222,6 +313,10 @@ export function AdminFarms() {
         product_summary: form.product_summary.trim() || null,
         description: form.description.trim() || null,
         kakao_channel_url: kakaoChannelHref(form.kakao_channel_url),
+        phone: form.phone.trim() || null,
+        mobile_phone: form.mobile_phone.trim() || null,
+        address: form.address.trim() || null,
+        map_url: safeHttpUrl(form.map_url),
         bank_name: form.bank_name.trim(),
         account_number: form.account_number.trim(),
         account_holder: form.account_holder.trim(),
@@ -243,6 +338,18 @@ export function AdminFarms() {
       await supabase.from('farms').delete().eq('id', farm.id)
       setPending(false)
       setError(memberError.message)
+      return
+    }
+    try {
+      const { blocks: landing_blocks, obsolete } = await persistLandingBlocks(farm.id, createLanding, [])
+      const { error: landingError } = await supabase.from('farms').update({ landing_blocks }).eq('id', farm.id)
+      if (landingError) throw landingError
+      void cleanupLandingImages(obsolete)
+    } catch (err) {
+      setPending(false)
+      setError(err instanceof Error ? err.message : '랜딩페이지 이미지 업로드에 실패했습니다.')
+      resetCreate()
+      await load()
       return
     }
     setPending(false)
@@ -273,7 +380,13 @@ export function AdminFarms() {
         title="농가"
         subtitle={`${farms.length}곳`}
         rightElement={
-          <Button size="sm" onClick={() => setShowCreate(true)}>
+          <Button
+            size="sm"
+            onClick={() => {
+              setCreateLanding([createLandingBlock()])
+              setShowCreate(true)
+            }}
+          >
             농가 추가
           </Button>
         }
@@ -297,15 +410,19 @@ export function AdminFarms() {
               }}
               required
             />
-            <Input
-              label="슬러그"
-              value={form.slug}
-              onChange={(e) => {
-                setSlugTouched(true)
-                setForm((prev) => ({ ...prev, slug: toSlug(e.target.value) }))
-              }}
-              placeholder="주문 페이지 주소 /farm/슬러그"
-            />
+            <div>
+              <Input
+                label="주문 페이지 주소"
+                value={form.slug}
+                onChange={(e) => {
+                  const slug = toSlug(e.target.value)
+                  setSlugTouched(slug.length > 0)
+                  setForm((prev) => ({ ...prev, slug }))
+                }}
+                placeholder="jeju-nongjang"
+              />
+              <p className="mt-1 text-xs text-muted">/farm/{form.slug || '...'}</p>
+            </div>
             <Input
               label="지역"
               value={form.location}
@@ -321,6 +438,49 @@ export function AdminFarms() {
               label="소개"
               value={form.description}
               onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
+              placeholder="전화주셔서 감사합니다. 세계가 인정한 믿고 먹을 수 있는 포도즙"
+            />
+            <Input
+              label="전화번호"
+              value={form.phone}
+              onChange={(e) => setForm((prev) => ({ ...prev, phone: e.target.value }))}
+              placeholder="031-585-0068"
+            />
+            <Input
+              label="휴대폰"
+              value={form.mobile_phone}
+              onChange={(e) => setForm((prev) => ({ ...prev, mobile_phone: e.target.value }))}
+              placeholder="010-0000-0000"
+            />
+            <Input
+              label="주소"
+              value={form.address}
+              onChange={(e) => setForm((prev) => ({ ...prev, address: e.target.value }))}
+              placeholder="경기 가평군 상면 수역길 69"
+            />
+            <Input
+              label="네이버지도 길안내"
+              value={form.map_url}
+              onChange={(e) => setForm((prev) => ({ ...prev, map_url: e.target.value }))}
+              placeholder="https://naver.me/..."
+            />
+            <FarmSharePreview
+              farm={{
+                name: form.name,
+                slug: form.slug,
+                description: form.description,
+                product_summary: form.product_summary,
+                phone: form.phone,
+                mobile_phone: form.mobile_phone,
+                address: form.address,
+                map_url: form.map_url,
+              }}
+            />
+            <LandingBlocksField
+              blocks={createLanding}
+              onChange={setCreateLanding}
+              slug={form.slug}
+              onError={setError}
             />
             <Input
               label="카카오톡 비즈니스 프로필"
@@ -328,10 +488,9 @@ export function AdminFarms() {
               onChange={(e) => setForm((prev) => ({ ...prev, kakao_channel_url: e.target.value }))}
               placeholder="https://pf.kakao.com/_xxxxx"
             />
-            <Input
-              label="은행"
+            <BankField
               value={form.bank_name}
-              onChange={(e) => setForm((prev) => ({ ...prev, bank_name: e.target.value }))}
+              onChange={(bank_name) => setForm((prev) => ({ ...prev, bank_name }))}
               required
             />
             <Input
@@ -380,10 +539,11 @@ export function AdminFarms() {
                   onChange={(e) => setEditing({ ...editing, name: e.target.value })}
                 />
                 <Input
-                  label="슬러그"
+                  label="주문 페이지 주소"
                   value={editing.slug}
-                  onChange={(e) => setEditing({ ...editing, slug: e.target.value })}
+                  onChange={(e) => setEditing({ ...editing, slug: toSlug(e.target.value) })}
                 />
+                <p className="text-xs text-muted">/farm/{toSlug(editing.slug) || farm.slug}</p>
                 <Input
                   label="지역"
                   value={editing.location ?? ''}
@@ -398,6 +558,49 @@ export function AdminFarms() {
                   label="소개"
                   value={editing.description ?? ''}
                   onChange={(e) => setEditing({ ...editing, description: e.target.value })}
+                  placeholder="전화주셔서 감사합니다. 세계가 인정한 믿고 먹을 수 있는 포도즙"
+                />
+                <Input
+                  label="전화번호"
+                  value={editing.phone ?? ''}
+                  onChange={(e) => setEditing({ ...editing, phone: e.target.value })}
+                  placeholder="031-585-0068"
+                />
+                <Input
+                  label="휴대폰"
+                  value={editing.mobile_phone ?? ''}
+                  onChange={(e) => setEditing({ ...editing, mobile_phone: e.target.value })}
+                  placeholder="010-0000-0000"
+                />
+                <Input
+                  label="주소"
+                  value={editing.address ?? ''}
+                  onChange={(e) => setEditing({ ...editing, address: e.target.value })}
+                  placeholder="경기 가평군 상면 수역길 69"
+                />
+                <Input
+                  label="네이버지도 길안내"
+                  value={editing.map_url ?? ''}
+                  onChange={(e) => setEditing({ ...editing, map_url: e.target.value })}
+                  placeholder="https://naver.me/..."
+                />
+                <FarmSharePreview
+                  farm={{
+                    name: editing.name,
+                    slug: toSlug(editing.slug) || farm.slug,
+                    description: editing.description,
+                    product_summary: editing.product_summary,
+                    phone: editing.phone,
+                    mobile_phone: editing.mobile_phone,
+                    address: editing.address,
+                    map_url: editing.map_url,
+                  }}
+                />
+                <LandingBlocksField
+                  blocks={editLanding}
+                  onChange={setEditLanding}
+                  slug={editing.slug}
+                  onError={setError}
                 />
                 <Input
                   label="카카오톡 비즈니스 프로필"
@@ -405,10 +608,9 @@ export function AdminFarms() {
                   onChange={(e) => setEditing({ ...editing, kakao_channel_url: e.target.value })}
                   placeholder="https://pf.kakao.com/_xxxxx"
                 />
-                <Input
-                  label="은행"
+                <BankField
                   value={editing.bank_name}
-                  onChange={(e) => setEditing({ ...editing, bank_name: e.target.value })}
+                  onChange={(bank_name) => setEditing({ ...editing, bank_name })}
                 />
                 <Input
                   label="계좌"
@@ -423,33 +625,52 @@ export function AdminFarms() {
                 <div className="flex gap-2">
                   <Button
                     size="sm"
+                    disabled={pending}
                     onClick={async () => {
                       setError('')
-                      const slug = toSlug(editing.slug)
+                      const slug = toSlug(editing.slug) || farm.slug
                       if (RESERVED_SLUGS.has(slug) && slug !== farm.slug) {
                         setError('이 주문 페이지 주소는 사용할 수 없습니다.')
                         return
                       }
-                      const { error: updateError } = await supabase
-                        .from('farms')
-                        .update({
-                          name: editing.name,
-                          slug,
-                          location: editing.location?.trim() || null,
-                          product_summary: editing.product_summary?.trim() || null,
-                          description: editing.description?.trim() || null,
-                          kakao_channel_url: kakaoChannelHref(editing.kakao_channel_url),
-                          bank_name: editing.bank_name,
-                          account_number: editing.account_number,
-                          account_holder: editing.account_holder,
-                        })
-                        .eq('id', farm.id)
-                      if (updateError) {
-                        setError(updateError.message)
-                        return
+                      setPending(true)
+                      try {
+                        const { blocks: landing_blocks, obsolete } = await persistLandingBlocks(
+                          farm.id,
+                          editLanding,
+                          parseLandingBlocks(farm.landing_blocks),
+                        )
+                        const { error: updateError } = await supabase
+                          .from('farms')
+                          .update({
+                            name: editing.name,
+                            slug,
+                            location: editing.location?.trim() || null,
+                            product_summary: editing.product_summary?.trim() || null,
+                            description: editing.description?.trim() || null,
+                            kakao_channel_url: kakaoChannelHref(editing.kakao_channel_url),
+                            phone: editing.phone?.trim() || null,
+                            mobile_phone: editing.mobile_phone?.trim() || null,
+                            address: editing.address?.trim() || null,
+                            map_url: safeHttpUrl(editing.map_url),
+                            landing_blocks,
+                            bank_name: editing.bank_name,
+                            account_number: editing.account_number,
+                            account_holder: editing.account_holder,
+                          })
+                          .eq('id', farm.id)
+                        if (updateError) {
+                          setError(updateError.message)
+                          return
+                        }
+                        void cleanupLandingImages(obsolete)
+                        setEditing(null)
+                        await load()
+                      } catch (err) {
+                        setError(err instanceof Error ? err.message : '랜딩페이지 이미지 업로드에 실패했습니다.')
+                      } finally {
+                        setPending(false)
                       }
-                      setEditing(null)
-                      await load()
                     }}
                   >
                     저장
@@ -509,9 +730,6 @@ export function AdminFarms() {
                   <p className="text-sm mt-1">
                     {farm.bank_name} {farm.account_number}
                   </p>
-                  {farm.kakao_channel_url && (
-                    <p className="text-xs text-muted mt-1">카카오톡 채널 연결됨</p>
-                  )}
                   <p className="text-sm text-muted mt-1">
                     담당 {profileLabel(profilesById.get(farm.owner_user_id))}
                   </p>
@@ -523,6 +741,7 @@ export function AdminFarms() {
                     onClick={(e) => {
                       e.stopPropagation()
                       setEditing(farm)
+                      setEditLanding(draftsFromLandingBlocks(farm.landing_blocks))
                       setBindFarmId(null)
                     }}
                   >

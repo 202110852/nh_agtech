@@ -12,7 +12,7 @@ import { supabase } from '../lib/supabase'
 import type { Farm } from '../types/models'
 
 export function Landing() {
-  const { user, isAdmin, isFarmUser, signOut } = useAuth()
+  const { user, signOut } = useAuth()
   const { openLogin } = useLoginSheet()
   const [farms, setFarms] = useState<Farm[]>([])
   const [loading, setLoading] = useState(true)
@@ -36,14 +36,9 @@ export function Landing() {
         subtitle={BRAND.tagline}
         rightElement={
           user ? (
-            <div className="flex items-center gap-3">
-              <button type="button" onClick={() => void signOut()} className="text-sm text-muted">
-                로그아웃
-              </button>
-              <Link to={isAdmin ? '/admin' : isFarmUser ? '/manage' : '/me/orders'} className="text-sm font-semibold text-primary">
-                내 페이지
-              </Link>
-            </div>
+            <button type="button" onClick={() => void signOut()} className="text-sm text-muted">
+              로그아웃
+            </button>
           ) : (
             <button type="button" onClick={() => openLogin()} className="text-sm font-semibold text-primary">
               로그인
@@ -92,7 +87,7 @@ export function Landing() {
                   {farm.product_summary && (
                     <p className="mt-1 text-sm text-gray-700">{farm.product_summary}</p>
                   )}
-                  <Link to={`/farm/${farm.slug}`}>
+                  <Link to={`/farm/${farm.slug}/landingpage`}>
                     <Button className="mt-4" fullWidth>
                       주문하기
                     </Button>

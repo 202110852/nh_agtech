@@ -50,8 +50,29 @@ export function kakaoChannelHref(value: string | null | undefined): string | nul
   const raw = value?.trim()
   if (!raw) return null
   if (/^(javascript|data|vbscript):/i.test(raw)) return null
-  if (/^https?:\/\//i.test(raw)) return raw
-  if (/^pf\.kakao\.com\//i.test(raw)) return `https://${raw}`
-  const id = raw.replace(/^\/+/, '')
-  return `https://pf.kakao.com/${id}`
+  const href = /^https?:\/\//i.test(raw)
+    ? raw
+    : /^pf\.kakao\.com\//i.test(raw)
+      ? `https://${raw}`
+      : `https://pf.kakao.com/${raw.replace(/^\/+/, '')}`
+  return href.replace(/\/+$/, '').replace(/\/chat$/i, '')
+}
+
+export function kakaoChannelChatHref(value: string | null | undefined): string | null {
+  const profile = kakaoChannelHref(value)
+  return profile ? `${profile}/chat` : null
+}
+
+export function safeHttpUrl(value: string | null | undefined): string | null {
+  const raw = value?.trim()
+  if (!raw) return null
+  if (/^(javascript|data|vbscript):/i.test(raw)) return null
+  const href = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`
+  try {
+    const parsed = new URL(href)
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return null
+    return parsed.toString()
+  } catch {
+    return null
+  }
 }

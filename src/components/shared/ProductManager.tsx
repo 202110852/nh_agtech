@@ -11,90 +11,16 @@ import {
   KPOST_WEIGHTS,
 } from '../../lib/kpostParcelExcel'
 import { formatPrice } from '../../lib/format'
+import { deletePublicImage, preparePublicImage, uploadFarmImage } from '../../lib/storageImages'
 import { supabase } from '../../lib/supabase'
-import type { Product } from '../../types/models'
+import {
+  PRODUCT_SALE_STATUS_LABEL,
+  PRODUCT_SALE_STATUS_OPTIONS,
+  productSaleStatus,
+  type Product,
+  type ProductSaleStatus,
+} from '../../types/models'
 import { ProductCard } from './ProductCard'
-
-const PRODUCT_IMAGES_BUCKET = 'product-images'
-const MAX_PRODUCT_IMAGE_BYTES = 5 * 1024 * 1024
-const MAX_PRODUCT_IMAGE_EDGE = 1920
-const PRODUCT_IMAGE_TYPES: Record<string, string> = {
-  'image/jpeg': 'jpg',
-  'image/png': 'png',
-  'image/webp': 'webp',
-  'image/gif': 'gif',
-}
-
-function mimeFromName(name: string) {
-  const ext = name.split('.').pop()?.toLowerCase()
-  if (ext === 'jpg' || ext === 'jpeg') return 'image/jpeg'
-  if (ext === 'png') return 'image/png'
-  if (ext === 'webp') return 'image/webp'
-  if (ext === 'gif') return 'image/gif'
-  if (ext === 'heic' || ext === 'heif') return 'image/heic'
-  return ''
-}
-
-async function rasterToJpeg(file: File) {
-  let source: CanvasImageSource
-  let width: number
-  let height: number
-  try {
-    const bitmap = await createImageBitmap(file)
-    source = bitmap
-    width = bitmap.width
-    height = bitmap.height
-  } catch {
-    const loaded = await new Promise<HTMLImageElement>((resolve, reject) => {
-      const image = new Image()
-      const url = URL.createObjectURL(file)
-      image.onload = () => {
-        URL.revokeObjectURL(url)
-        resolve(image)
-      }
-      image.onerror = () => {
-        URL.revokeObjectURL(url)
-        reject(new Error('이미지를 읽을 수 없습니다.'))
-      }
-      image.src = url
-    })
-    source = loaded
-    width = loaded.naturalWidth
-    height = loaded.naturalHeight
-  }
-  const scale = Math.min(1, MAX_PRODUCT_IMAGE_EDGE / Math.max(width, height))
-  const canvas = document.createElement('canvas')
-  canvas.width = Math.max(1, Math.round(width * scale))
-  canvas.height = Math.max(1, Math.round(height * scale))
-  const ctx = canvas.getContext('2d')
-  if (!ctx) throw new Error('이미지를 변환할 수 없습니다.')
-  ctx.drawImage(source, 0, 0, canvas.width, canvas.height)
-  if ('close' in source && typeof source.close === 'function') source.close()
-  const blob = await new Promise<Blob>((resolve, reject) => {
-    canvas.toBlob(
-      (next) => (next ? resolve(next) : reject(new Error('이미지를 변환할 수 없습니다.'))),
-      'image/jpeg',
-      0.85,
-    )
-  })
-  return new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), { type: 'image/jpeg' })
-}
-
-async function prepareProductImage(file: File) {
-  const type = (file.type || mimeFromName(file.name)).toLowerCase()
-  const allowed = Boolean(PRODUCT_IMAGE_TYPES[type])
-  if (allowed && file.size <= MAX_PRODUCT_IMAGE_BYTES) return file
-  if (type && !type.startsWith('image/')) return '이미지 파일만 업로드할 수 있습니다.'
-  try {
-    const converted = await rasterToJpeg(file)
-    if (converted.size > MAX_PRODUCT_IMAGE_BYTES) return '이미지가 너무 큽니다. 다른 사진을 선택하세요.'
-    return converted
-  } catch {
-    return allowed
-      ? '이미지가 너무 큽니다. 다른 사진을 선택하세요.'
-      : '이 기기에서 해당 사진을 변환할 수 없습니다. JPEG 또는 PNG로 선택하세요.'
-  }
-}
 
 function ImageFileInput({ onPick }: { onPick: (file: File) => void }) {
   return (
@@ -147,36 +73,6 @@ function productToForm(product: Product): ProductFormValues {
     parcel_content_code: product.parcel_content_code,
     parcel_delivery_type: product.parcel_delivery_type,
   }
-}
-
-function productImagePathFromUrl(url: string | null) {
-  if (!url) return null
-  try {
-    const parsed = new URL(url)
-    const prefix = `/storage/v1/object/public/${PRODUCT_IMAGES_BUCKET}/`
-    if (!parsed.pathname.startsWith(prefix)) return null
-    return decodeURIComponent(parsed.pathname.slice(prefix.length))
-  } catch {
-    return null
-  }
-}
-
-async function uploadProductImage(farmId: string, file: File) {
-  const ext = PRODUCT_IMAGE_TYPES[file.type] ?? 'jpg'
-  const path = `${farmId}/${crypto.randomUUID()}.${ext}`
-  const { error } = await supabase.storage.from(PRODUCT_IMAGES_BUCKET).upload(path, file, {
-    cacheControl: '3600',
-    contentType: file.type,
-    upsert: false,
-  })
-  if (error) throw error
-  return supabase.storage.from(PRODUCT_IMAGES_BUCKET).getPublicUrl(path).data.publicUrl
-}
-
-async function deleteProductImage(url: string | null) {
-  const path = productImagePathFromUrl(url)
-  if (!path) return
-  await supabase.storage.from(PRODUCT_IMAGES_BUCKET).remove([path])
 }
 
 function formPayload(form: ProductFormValues) {
@@ -325,6 +221,28 @@ function ProductFormCard({
   )
 }
 
+function SaleStatusSelect({
+  product,
+  onChange,
+}: {
+  product: Product
+  onChange: (status: ProductSaleStatus) => void
+}) {
+  return (
+    <select
+      className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs"
+      value={productSaleStatus(product)}
+      onChange={(e) => onChange(e.target.value as ProductSaleStatus)}
+    >
+      {PRODUCT_SALE_STATUS_OPTIONS.map((option) => (
+        <option key={option.value} value={option.value}>
+          {option.label}
+        </option>
+      ))}
+    </select>
+  )
+}
+
 function moveItem<T>(list: T[], from: number, to: number) {
   if (from === to || from < 0 || to < 0) return list
   const next = [...list]
@@ -420,7 +338,7 @@ export function ProductManager({ farmId, variant = 'admin', onCountChange }: Pro
 
   function pickImage(file: File) {
     void (async () => {
-      const prepared = await prepareProductImage(file)
+      const prepared = await preparePublicImage(file)
       if (typeof prepared === 'string') {
         setError(prepared)
         return
@@ -454,6 +372,11 @@ export function ProductManager({ farmId, variant = 'admin', onCountChange }: Pro
       ),
     )
     if (results.some((result) => result.error)) await load()
+  }
+
+  async function setSaleStatus(productId: string, saleStatus: ProductSaleStatus) {
+    await supabase.from('products').update({ sale_status: saleStatus }).eq('id', productId)
+    await load()
   }
 
   function onReorderPointerDown(event: PointerEvent<HTMLDivElement>, id: string) {
@@ -497,7 +420,7 @@ export function ProductManager({ farmId, variant = 'admin', onCountChange }: Pro
     const previousImageUrl = form.image_url || null
     try {
       let imageUrl = imageRemoved ? null : previousImageUrl
-      if (imageFile) imageUrl = await uploadProductImage(farmId, imageFile)
+      if (imageFile) imageUrl = await uploadFarmImage(farmId, imageFile)
       const { error: saveError } = editingId
         ? await supabase.from('products').update({ ...payload, image_url: imageUrl }).eq('id', editingId)
         : await supabase.from('products').insert({
@@ -511,7 +434,7 @@ export function ProductManager({ farmId, variant = 'admin', onCountChange }: Pro
         return
       }
       if (previousImageUrl && previousImageUrl !== imageUrl) {
-        void deleteProductImage(previousImageUrl)
+        void deletePublicImage(previousImageUrl)
       }
       closeForm()
       if (!isFarm) setForm(emptyProductForm)
@@ -584,20 +507,10 @@ export function ProductManager({ farmId, variant = 'admin', onCountChange }: Pro
                   extra={
                     reordering ? undefined : (
                       <div className="mt-3 flex items-center gap-2">
-                        <select
-                          className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs"
-                          value={product.is_active ? 'active' : 'hidden'}
-                          onChange={async (e) => {
-                            await supabase
-                              .from('products')
-                              .update({ is_active: e.target.value === 'active' })
-                              .eq('id', product.id)
-                            await load()
-                          }}
-                        >
-                          <option value="active">판매중</option>
-                          <option value="hidden">숨김</option>
-                        </select>
+                        <SaleStatusSelect
+                          product={product}
+                          onChange={(status) => void setSaleStatus(product.id, status)}
+                        />
                         <Button
                           size="sm"
                           variant="outline"
@@ -635,12 +548,16 @@ export function ProductManager({ farmId, variant = 'admin', onCountChange }: Pro
             </p>
             <p className="text-sm text-primary">{formatPrice(product.price)}</p>
             <p className="text-xs text-muted">
-              {product.is_active ? '판매중' : '숨김'} · 택배 {product.parcel_weight_kg}kg · {product.parcel_volume_cm}cm
+              {PRODUCT_SALE_STATUS_LABEL[productSaleStatus(product)]} · 택배 {product.parcel_weight_kg}kg · {product.parcel_volume_cm}cm
               · {product.parcel_content_code}
               {product.parcel_delivery_type ? ` · ${product.parcel_delivery_type}` : ''}
             </p>
           </div>
           <div className="flex shrink-0 gap-2">
+            <SaleStatusSelect
+              product={product}
+              onChange={(status) => void setSaleStatus(product.id, status)}
+            />
             <Button
               size="sm"
               variant="outline"
@@ -653,16 +570,6 @@ export function ProductManager({ farmId, variant = 'admin', onCountChange }: Pro
               }}
             >
               수정
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={async () => {
-                await supabase.from('products').update({ is_active: !product.is_active }).eq('id', product.id)
-                await load()
-              }}
-            >
-              {product.is_active ? '숨기기' : '판매'}
             </Button>
           </div>
         </Card>

@@ -13,7 +13,7 @@ import { formatPrice } from '../../lib/format'
 import { invokeFunction } from '../../lib/functions'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/auth'
-import type { Farm, Product, SavedAddress } from '../../types/models'
+import { isProductOrderable, type Farm, type Product, type SavedAddress } from '../../types/models'
 
 interface CheckoutResult {
   orderId: string
@@ -56,7 +56,7 @@ export function Checkout() {
           .from('products')
           .select('*')
           .eq('farm_id', farmData.id)
-          .eq('is_active', true)
+          .eq('sale_status', 'on_sale')
         setProducts((productRows as Product[]) ?? [])
       }
       if (user) {
@@ -89,7 +89,7 @@ export function Checkout() {
   }
 
   const lines = products
-    .filter((product) => (qtyById[product.id] ?? 0) > 0)
+    .filter((product) => isProductOrderable(product) && (qtyById[product.id] ?? 0) > 0)
     .map((product) => ({
       product,
       quantity: qtyById[product.id] ?? 0,

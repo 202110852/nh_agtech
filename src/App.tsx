@@ -6,6 +6,7 @@ import { Login } from './pages/auth/Login'
 import { AuthCallback } from './pages/auth/AuthCallback'
 import { AdminLogin } from './pages/auth/AdminLogin'
 import { FarmStore } from './pages/order/FarmStore'
+import { FarmLanding } from './pages/order/FarmLanding'
 import { Checkout } from './pages/order/Checkout'
 import { OrderComplete } from './pages/order/OrderComplete'
 import { MyOrders } from './pages/me/MyOrders'
@@ -43,6 +44,7 @@ export default function App() {
         <Route path="/farm/delivery" element={<Navigate to="/manage/delivery" replace />} />
         <Route path="/farm/settings" element={<Navigate to="/manage/settings" replace />} />
         <Route path="/farm/:farmSlug" element={<FarmStore />} />
+        <Route path="/farm/:farmSlug/landingpage" element={<FarmLanding />} />
         <Route
           path="/farm/:farmSlug/checkout"
           element={

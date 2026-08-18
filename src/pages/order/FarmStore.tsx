@@ -7,11 +7,11 @@ import { ProductCard } from '../../components/shared/ProductCard'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
 import { PageSpinner } from '../../components/ui/Feedback'
-import { cartCount, getCart, setCart, type CartItem } from '../../lib/cart'
+import { getCart, setCart, type CartItem } from '../../lib/cart'
 import { formatPrice, kakaoChannelHref } from '../../lib/format'
 import { useAuth } from '../../lib/auth'
 import { supabase } from '../../lib/supabase'
-import type { Farm, Product } from '../../types/models'
+import { isProductOrderable, type Farm, type Product } from '../../types/models'
 
 export function FarmStore() {
   const { farmSlug = '' } = useParams()
@@ -47,10 +47,13 @@ export function FarmStore() {
   }, [farmSlug])
 
   const qtyById = useMemo(() => Object.fromEntries(cart.map((item) => [item.productId, item.quantity])), [cart])
-  const selected = products.filter((product) => (qtyById[product.id] ?? 0) > 0)
+  const selected = products.filter((product) => isProductOrderable(product) && (qtyById[product.id] ?? 0) > 0)
+  const selectedCount = selected.reduce((sum, product) => sum + (qtyById[product.id] ?? 0), 0)
   const total = selected.reduce((sum, product) => sum + product.price * (qtyById[product.id] ?? 0), 0)
 
   function updateQty(productId: string, quantity: number) {
+    const product = products.find((item) => item.id === productId)
+    if (product && !isProductOrderable(product)) return
     const next = cart.filter((item) => item.productId !== productId)
     if (quantity > 0) next.push({ productId, quantity })
     setCart(farmSlug, next)
@@ -74,7 +77,7 @@ export function FarmStore() {
         title={farm.name}
         subtitle={farm.location || BRAND_SUB}
         showBack
-        backTo="/"
+        backTo={`/farm/${farmSlug}/landingpage`}
         rightElement={
           <button
             type="button"
@@ -113,11 +116,11 @@ export function FarmStore() {
           </div>
         )}
       </div>
-      {cartCount(cart) > 0 && (
+      {selectedCount > 0 && (
         <div className="fixed bottom-0 left-0 right-0 border-t border-gray-100 bg-white p-4">
           <div className="max-w-5xl mx-auto flex items-center gap-3">
             <div className="flex-1">
-              <p className="text-xs text-muted">{cartCount(cart)}개 선택</p>
+              <p className="text-xs text-muted">{selectedCount}개 선택</p>
               <p className="font-bold text-primary">{formatPrice(total)}</p>
             </div>
             <Button
