@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { FarmOrderPageLink } from '../../components/layout/FarmOrderPageLink'
 import { Header } from '../../components/layout/Header'
 import { NotificationBell } from '../../components/notifications/NotificationBell'
 import { DepositConfirmExtra } from '../../components/shared/DepositConfirmExtra'
@@ -59,7 +60,12 @@ export function FarmOrders() {
         subtitle={`총 ${orders.length}건`}
         showBack={isAdminView}
         backTo={basePath}
-        rightElement={<NotificationBell farmPath={`${basePath}/orders`} />}
+        rightElement={
+          <>
+            <FarmOrderPageLink slug={farm.slug} />
+            <NotificationBell farmPath={`${basePath}/orders`} />
+          </>
+        }
       />
       <div className="px-4 py-4 md:px-6 max-w-5xl mx-auto space-y-4">
         <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">

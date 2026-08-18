@@ -1,6 +1,7 @@
-import { ExternalLink, LayoutDashboard, Package, Truck } from 'lucide-react'
+import { LayoutDashboard, Package, Truck } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
+import { FarmOrderPageLink } from '../../components/layout/FarmOrderPageLink'
 import { Header } from '../../components/layout/Header'
 import { NotificationBell } from '../../components/notifications/NotificationBell'
 import { OrderChart } from '../../components/shared/OrderChart'
@@ -66,10 +67,7 @@ export function FarmDashboard() {
         backTo={`/farm/${farm.slug}/landingpage`}
         rightElement={
           <>
-            <Link to={`/farm/${farm.slug}/landingpage`} className="flex items-center gap-1 text-sm font-medium text-primary">
-              주문 페이지
-              <ExternalLink className="h-3.5 w-3.5" />
-            </Link>
+            <FarmOrderPageLink slug={farm.slug} />
             {!isAdminView && (
               <button type="button" className="text-sm text-muted" onClick={() => void signOut()}>
                 로그아웃

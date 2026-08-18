@@ -14,7 +14,7 @@ export const KPOST_CONTENT_CODES = [
   '기타',
 ] as const
 
-export const KPOST_WEIGHTS = ['5', '10', '20', '30'] as const
+export const KPOST_WEIGHTS = ['3', '5', '10', '20', '30'] as const
 export const KPOST_VOLUMES = ['80', '100', '120', '160'] as const
 export const KPOST_DELIVERY_TYPES = ['', '대면', '비대면'] as const
 

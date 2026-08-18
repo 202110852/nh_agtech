@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { FarmOrderPageLink } from '../../components/layout/FarmOrderPageLink'
 import { Header } from '../../components/layout/Header'
 import { NotificationBell } from '../../components/notifications/NotificationBell'
 import { ProductManager } from '../../components/shared/ProductManager'
@@ -15,7 +16,12 @@ export function FarmProducts() {
         subtitle={`총 ${count}건`}
         showBack={isAdminView}
         backTo={basePath}
-        rightElement={<NotificationBell farmPath={`${basePath}/orders`} />}
+        rightElement={
+          <>
+            <FarmOrderPageLink slug={farm.slug} />
+            <NotificationBell farmPath={`${basePath}/orders`} />
+          </>
+        }
       />
       <div className="px-4 py-4 md:px-6 max-w-5xl mx-auto">
         <ProductManager farmId={farm.id} variant="farm" onCountChange={setCount} />

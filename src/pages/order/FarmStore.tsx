@@ -93,9 +93,7 @@ export function FarmStore() {
       />
       <div className="px-4 py-4 md:px-6 max-w-5xl mx-auto space-y-4">
         {kakaoHref ? (
-          <Card>
-            <KakaoChannelButton href={kakaoHref} />
-          </Card>
+          <KakaoChannelButton href={kakaoHref} />
         ) : (farm.description || farm.product_summary) ? (
           <Card>
             <p className="text-sm text-gray-700">{farm.description || farm.product_summary}</p>

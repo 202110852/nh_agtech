@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { FarmOrderPageLink } from '../../components/layout/FarmOrderPageLink'
 import { Header } from '../../components/layout/Header'
 import { NotificationBell } from '../../components/notifications/NotificationBell'
 import { OrderItem } from '../../components/shared/OrderItem'
@@ -27,7 +28,12 @@ export function FarmDelivery() {
         subtitle={`출고 대기 ${orders.length}건`}
         showBack={isAdminView}
         backTo={basePath}
-        rightElement={<NotificationBell farmPath={`${basePath}/orders`} />}
+        rightElement={
+          <>
+            <FarmOrderPageLink slug={farm.slug} />
+            <NotificationBell farmPath={`${basePath}/orders`} />
+          </>
+        }
       />
       <div className="px-4 py-4 md:px-6 max-w-5xl mx-auto space-y-3">
         {orders.map((order) => (

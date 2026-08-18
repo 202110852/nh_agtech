@@ -49,10 +49,33 @@ interface ProductFormValues {
   parcel_delivery_type: string
 }
 
+const UNIT_OPTIONS = KPOST_WEIGHTS.map((value) => `${value}kg`)
+
+function weightFromUnit(unit: string) {
+  const match = unit.trim().match(/^(\d+)\s*kg$/i)
+  if (!match) return null
+  return KPOST_WEIGHTS.find((value) => value === match[1]) ?? null
+}
+
+function unitFromWeight(weight: string) {
+  return `${weight}kg`
+}
+
+function normalizeUnit(unit: string | null | undefined, parcelWeight: string) {
+  const raw = unit?.trim() ?? ''
+  if (!raw) return unitFromWeight(parcelWeight)
+  const weight = weightFromUnit(raw)
+  return weight ? unitFromWeight(weight) : raw
+}
+
+function unitSelectOptions(current: string) {
+  return current && !UNIT_OPTIONS.includes(current) ? [current, ...UNIT_OPTIONS] : UNIT_OPTIONS
+}
+
 const emptyProductForm: ProductFormValues = {
   name: '',
   price: '',
-  unit: '',
+  unit: unitFromWeight('5'),
   description: '',
   image_url: '',
   parcel_weight_kg: '5',
@@ -62,13 +85,14 @@ const emptyProductForm: ProductFormValues = {
 }
 
 function productToForm(product: Product): ProductFormValues {
+  const parcel_weight_kg = weightFromUnit(product.unit ?? '') ?? product.parcel_weight_kg
   return {
     name: product.name,
     price: String(product.price),
-    unit: product.unit ?? '',
+    unit: normalizeUnit(product.unit, parcel_weight_kg),
     description: product.description ?? '',
     image_url: product.image_url ?? '',
-    parcel_weight_kg: product.parcel_weight_kg,
+    parcel_weight_kg,
     parcel_volume_cm: product.parcel_volume_cm,
     parcel_content_code: product.parcel_content_code,
     parcel_delivery_type: product.parcel_delivery_type,
@@ -133,12 +157,22 @@ function ProductFormCard({
       </div>
       <Input label="상품명" value={form.name} onChange={(e) => onChange('name', e.target.value)} />
       <Input label="가격" type="number" value={form.price} onChange={(e) => onChange('price', e.target.value)} />
-      <Input
+      <Select
         label="단위"
-        placeholder="5kg"
         value={form.unit}
-        onChange={(e) => onChange('unit', e.target.value)}
-      />
+        onChange={(e) => {
+          const unit = e.target.value
+          onChange('unit', unit)
+          const weight = weightFromUnit(unit)
+          if (weight) onChange('parcel_weight_kg', weight)
+        }}
+      >
+        {unitSelectOptions(form.unit).map((option) => (
+          <option key={option} value={option}>
+            {option}
+          </option>
+        ))}
+      </Select>
       <Textarea label="설명" value={form.description} onChange={(e) => onChange('description', e.target.value)} />
       <div>
         <span className="text-xs font-medium text-muted">이미지</span>
@@ -169,7 +203,15 @@ function ProductFormCard({
         )}
       </div>
       <div className="grid grid-cols-2 gap-3">
-        <Select label="택배 중량(kg)" value={form.parcel_weight_kg} onChange={(e) => onChange('parcel_weight_kg', e.target.value)}>
+        <Select
+          label="택배 중량(kg)"
+          value={form.parcel_weight_kg}
+          onChange={(e) => {
+            const weight = e.target.value
+            onChange('parcel_weight_kg', weight)
+            onChange('unit', unitFromWeight(weight))
+          }}
+        >
           {KPOST_WEIGHTS.map((value) => (
             <option key={value} value={value}>
               {value}kg
@@ -479,58 +521,67 @@ export function ProductManager({ farmId, variant = 'admin', onCountChange }: Pro
         {reordering && (
           <p className="text-sm text-muted">카드를 드래그해서 순서를 바꾸세요. 주문 페이지에도 같은 순서로 보입니다.</p>
         )}
-        {!reordering && formCard}
+        {!reordering && !editingId && formCard}
         {products.length === 0 ? (
           <p className="text-center text-muted py-10">등록된 상품이 없습니다</p>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2">
-            {products.map((product) => (
-              <div
-                key={product.id}
-                data-product-id={product.id}
-                className={`relative h-full ${reordering ? 'cursor-grab touch-none select-none' : ''} ${
-                  draggingId === product.id ? 'opacity-60 ring-2 ring-primary rounded-2xl' : ''
-                }`}
-                style={reordering ? { touchAction: 'none' } : undefined}
-                onPointerDown={(event) => onReorderPointerDown(event, product.id)}
-                onPointerMove={onReorderPointerMove}
-                onPointerUp={onReorderPointerUp}
-                onPointerCancel={onReorderPointerUp}
-              >
-                {reordering && (
-                  <div className="pointer-events-none absolute right-2 top-2 z-10 rounded-lg bg-white/90 p-1 shadow-sm">
-                    <GripVertical className="h-4 w-4 text-muted" />
+            {products.map((product) => {
+              if (!reordering && editingId === product.id) {
+                return (
+                  <div key={product.id} className="sm:col-span-2">
+                    {formCard}
                   </div>
-                )}
-                <ProductCard
-                  product={product}
-                  extra={
-                    reordering ? undefined : (
-                      <div className="mt-3 flex items-center gap-2">
-                        <SaleStatusSelect
-                          product={product}
-                          onChange={(status) => void setSaleStatus(product.id, status)}
-                        />
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => {
-                            setEditingId(product.id)
-                            setForm(productToForm(product))
-                            setImageFile(null)
-                            setImageRemoved(false)
-                            setError('')
-                            setFormOpen(true)
-                          }}
-                        >
-                          수정
-                        </Button>
-                      </div>
-                    )
-                  }
-                />
-              </div>
-            ))}
+                )
+              }
+              return (
+                <div
+                  key={product.id}
+                  data-product-id={product.id}
+                  className={`relative h-full ${reordering ? 'cursor-grab touch-none select-none' : ''} ${
+                    draggingId === product.id ? 'opacity-60 ring-2 ring-primary rounded-2xl' : ''
+                  }`}
+                  style={reordering ? { touchAction: 'none' } : undefined}
+                  onPointerDown={(event) => onReorderPointerDown(event, product.id)}
+                  onPointerMove={onReorderPointerMove}
+                  onPointerUp={onReorderPointerUp}
+                  onPointerCancel={onReorderPointerUp}
+                >
+                  {reordering && (
+                    <div className="pointer-events-none absolute right-2 top-2 z-10 rounded-lg bg-white/90 p-1 shadow-sm">
+                      <GripVertical className="h-4 w-4 text-muted" />
+                    </div>
+                  )}
+                  <ProductCard
+                    product={product}
+                    extra={
+                      reordering ? undefined : (
+                        <div className="mt-3 flex items-center gap-2">
+                          <SaleStatusSelect
+                            product={product}
+                            onChange={(status) => void setSaleStatus(product.id, status)}
+                          />
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setEditingId(product.id)
+                              setForm(productToForm(product))
+                              setImageFile(null)
+                              setImageRemoved(false)
+                              setError('')
+                              setFormOpen(true)
+                            }}
+                          >
+                            수정
+                          </Button>
+                        </div>
+                      )
+                    }
+                  />
+                </div>
+              )
+            })}
           </div>
         )}
       </div>

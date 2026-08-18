@@ -76,7 +76,6 @@ export function ProductCard({ product, quantity = 0, onChangeQuantity, extra }: 
       </div>
       <div className="flex flex-1 flex-col p-4">
         <FitTwoLineTitle text={product.name} />
-        <p className="mt-0.5 min-h-5 truncate text-sm text-muted">{product.unit || '\u00a0'}</p>
         <p className="mt-2 min-h-10 line-clamp-2 text-sm text-gray-600">{product.description || '\u00a0'}</p>
         <p className="mt-2 text-lg font-bold text-primary">{formatPrice(product.price)}</p>
         {extra}
