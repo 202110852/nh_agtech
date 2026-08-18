@@ -60,3 +60,10 @@ export function composePhone(prefix: string, mid: string, last: string) {
   if (!middle && !tail) return ''
   return [head, middle, tail].filter(Boolean).join('-')
 }
+
+export function formatPhone(value: string | null | undefined) {
+  const raw = value?.trim() ?? ''
+  if (!raw) return ''
+  const parsed = parsePhone(raw)
+  return composePhone(parsed.prefix, parsed.mid, parsed.last) || raw
+}

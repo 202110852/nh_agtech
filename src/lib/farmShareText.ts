@@ -1,5 +1,6 @@
 import { BRAND } from '../config/brand'
 import { fullAddress } from './format'
+import { formatPhone } from './phone'
 
 export const FARM_SHARE_ORDER_CTA = '👇 💬 카카오톡 문의와 주문하러가기[클릭] 👇'
 
@@ -56,8 +57,16 @@ export function hasFarmShareDetails(farm: FarmShareInput) {
   )
 }
 
+export function formatShareTextPhones(text: string) {
+  return text.replace(/^([☎️📱]\s*)(.+)$/gm, (_match, prefix: string, raw: string) => {
+    const formatted = formatPhone(raw)
+    return `${prefix}${formatted || raw.trim()}`
+  })
+}
+
 export function resolveFarmShareText(farm: FarmShareInput, origin?: string) {
-  return farm.share_text?.trim() || buildFarmShareText(farm, origin)
+  const text = farm.share_text?.trim() || buildFarmShareText(farm, origin)
+  return formatShareTextPhones(text)
 }
 
 export function buildFarmShareText(farm: FarmShareInput, origin?: string) {
@@ -84,8 +93,8 @@ export function buildFarmShareText(farm: FarmShareInput, origin?: string) {
     lines.push(farmLandingUrl(slug, origin))
   }
 
-  const phone = farm.phone?.trim()
-  const mobile = farm.mobile_phone?.trim()
+  const phone = formatPhone(farm.phone)
+  const mobile = formatPhone(farm.mobile_phone)
   if (phone || mobile) {
     lines.push('')
     lines.push('문의전화')

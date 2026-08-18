@@ -1,6 +1,6 @@
 import type { Border, Fill, Font, Workbook } from 'exceljs'
 import type { OrderRow } from './orders'
-import { composePhone, digitsOnly, parsePhone } from './phone'
+import { digitsOnly, formatPhone } from './phone'
 
 export const KPOST_CONTENT_CODES = [
   '농/수/축산물(일반)',
@@ -64,8 +64,7 @@ const COLUMNS: Array<{
 ]
 
 export function formatParcelPhone(value: string) {
-  const parsed = parsePhone(value)
-  return composePhone(parsed.prefix, parsed.mid, parsed.last) || value
+  return formatPhone(value) || value
 }
 
 export function formatZonecode(value: string | null | undefined) {
