@@ -2,7 +2,7 @@
   "name": "팜어시",
   "short_name": "Farmassi",
   "description": "농가 직송 주문·배송 플랫폼",
-  "start_url": "/farm",
+  "start_url": "/manage",
   "scope": "/",
   "display": "standalone",
   "background_color": "#f8faf8",

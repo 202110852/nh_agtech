@@ -1,34 +1,379 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { AppShell } from '../../components/layout/AppShell'
 import { Header } from '../../components/layout/Header'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
-import { Input } from '../../components/ui/Field'
+import { ConfirmDialog } from '../../components/ui/ConfirmDialog'
+import { Input, Textarea } from '../../components/ui/Field'
+import { ErrorText } from '../../components/ui/Feedback'
 import { adminNavItems } from '../../config/adminNav'
+import { kakaoChannelHref } from '../../lib/format'
 import { supabase } from '../../lib/supabase'
-import type { Farm } from '../../types/models'
+import type { Farm, Profile } from '../../types/models'
+
+type ProfileOption = Pick<Profile, 'id' | 'display_name' | 'phone' | 'avatar_url'>
+
+interface FarmForm {
+  name: string
+  slug: string
+  location: string
+  product_summary: string
+  description: string
+  kakao_channel_url: string
+  bank_name: string
+  account_number: string
+  account_holder: string
+  owner_user_id: string
+  is_active: boolean
+}
+
+const emptyForm: FarmForm = {
+  name: '',
+  slug: '',
+  location: '',
+  product_summary: '',
+  description: '',
+  kakao_channel_url: '',
+  bank_name: '',
+  account_number: '',
+  account_holder: '',
+  owner_user_id: '',
+  is_active: true,
+}
+
+const RESERVED_SLUGS = new Set([
+  'admin',
+  'apply',
+  'auth',
+  'delivery',
+  'farm',
+  'login',
+  'manage',
+  'me',
+  'o',
+  'orders',
+  'products',
+  'settings',
+  'shop',
+  'store',
+])
+
+function toSlug(name: string) {
+  const base = name
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9가-힣-]/g, '')
+  return base || 'farm'
+}
+
+function uniqueSlug(name: string, taken: Set<string>, current?: string) {
+  const base = toSlug(name)
+  const blocked = (slug: string) => slug !== current && (taken.has(slug) || RESERVED_SLUGS.has(slug))
+  if (!blocked(base)) return base
+  return `${base}-${Math.random().toString(36).slice(2, 8)}`
+}
+
+function profileLabel(profile: ProfileOption | undefined) {
+  if (!profile) return '미지정'
+  const name = profile.display_name?.trim() || '이름 없음'
+  return profile.phone ? `${name} · ${profile.phone}` : name
+}
+
+function AccountPicker({
+  profiles,
+  selectedId,
+  onSelect,
+  label = '담당 계정',
+}: {
+  profiles: ProfileOption[]
+  selectedId: string
+  onSelect: (id: string) => void
+  label?: string
+}) {
+  const [query, setQuery] = useState('')
+  const selected = profiles.find((p) => p.id === selectedId)
+  const q = query.trim().toLowerCase()
+  const matches = useMemo(() => {
+    const list = q
+      ? profiles.filter((p) => {
+          const name = (p.display_name ?? '').toLowerCase()
+          const phone = (p.phone ?? '').replace(/\s/g, '')
+          const id = p.id.toLowerCase()
+          return name.includes(q) || phone.includes(q.replace(/\s/g, '')) || id.includes(q)
+        })
+      : profiles
+    return list.slice(0, 8)
+  }, [profiles, q])
+
+  return (
+    <div className="space-y-2">
+      <Input
+        label={label}
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        placeholder="이름, 연락처, 또는 계정 ID"
+      />
+      {selected && (
+        <div className="flex items-center justify-between gap-2 rounded-xl bg-primary-light px-3 py-2 text-sm">
+          <span className="font-medium text-primary">{profileLabel(selected)}</span>
+          <button type="button" className="text-xs text-muted" onClick={() => onSelect('')}>
+            해제
+          </button>
+        </div>
+      )}
+      {matches.length > 0 ? (
+        <ul className="max-h-48 overflow-y-auto rounded-xl border border-gray-200 divide-y divide-gray-100">
+          {matches.map((profile) => (
+            <li key={profile.id}>
+              <button
+                type="button"
+                className={`w-full px-3 py-2 text-left text-sm hover:bg-gray-50 ${
+                  profile.id === selectedId ? 'bg-primary-light font-medium' : ''
+                }`}
+                onClick={() => {
+                  onSelect(profile.id)
+                  setQuery('')
+                }}
+              >
+                {profileLabel(profile)}
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="text-xs text-muted">{q ? '일치하는 계정이 없습니다.' : '카카오로 로그인한 계정 목록입니다.'}</p>
+      )}
+    </div>
+  )
+}
 
 export function AdminFarms() {
+  const navigate = useNavigate()
   const [farms, setFarms] = useState<Farm[]>([])
+  const [profiles, setProfiles] = useState<ProfileOption[]>([])
   const [editing, setEditing] = useState<Farm | null>(null)
+  const [bindFarmId, setBindFarmId] = useState<string | null>(null)
+  const [bindUserId, setBindUserId] = useState('')
+  const [showCreate, setShowCreate] = useState(false)
+  const [form, setForm] = useState<FarmForm>(emptyForm)
+  const [slugTouched, setSlugTouched] = useState(false)
+  const [error, setError] = useState('')
+  const [pending, setPending] = useState(false)
+  const [visibilityTarget, setVisibilityTarget] = useState<Farm | null>(null)
+  const [visibilityPending, setVisibilityPending] = useState(false)
+
+  const profilesById = useMemo(() => new Map(profiles.map((p) => [p.id, p])), [profiles])
+  const takenSlugs = useMemo(() => new Set(farms.map((f) => f.slug)), [farms])
 
   async function load() {
-    const { data } = await supabase.from('farms').select('*').order('created_at', { ascending: false })
-    setFarms((data as Farm[]) ?? [])
+    const [farmRes, profileRes] = await Promise.all([
+      supabase.from('farms').select('*').order('created_at', { ascending: false }),
+      supabase.from('profiles').select('id, display_name, phone, avatar_url').order('display_name'),
+    ])
+    setFarms((farmRes.data as Farm[]) ?? [])
+    setProfiles((profileRes.data as ProfileOption[]) ?? [])
   }
 
   useEffect(() => {
     void load()
   }, [])
 
+  function resetCreate() {
+    setForm(emptyForm)
+    setSlugTouched(false)
+    setShowCreate(false)
+  }
+
+  async function bindOwner(farmId: string, userId: string) {
+    const { error: farmError } = await supabase.from('farms').update({ owner_user_id: userId }).eq('id', farmId)
+    if (farmError) throw farmError
+    const { error: memberError } = await supabase.from('farm_members').upsert(
+      { farm_id: farmId, user_id: userId, member_role: 'owner' },
+      { onConflict: 'farm_id,user_id' },
+    )
+    if (memberError) throw memberError
+  }
+
+  async function createFarm() {
+    setError('')
+    if (!form.name.trim()) {
+      setError('농가명을 입력하세요.')
+      return
+    }
+    if (!form.owner_user_id) {
+      setError('담당 계정을 선택하세요.')
+      return
+    }
+    if (!form.bank_name.trim() || !form.account_number.trim() || !form.account_holder.trim()) {
+      setError('입금 계좌 정보를 모두 입력하세요.')
+      return
+    }
+    setPending(true)
+    const slug = uniqueSlug(form.slug.trim() || form.name, takenSlugs)
+    const { data: farm, error: farmError } = await supabase
+      .from('farms')
+      .insert({
+        slug,
+        name: form.name.trim(),
+        owner_user_id: form.owner_user_id,
+        location: form.location.trim() || null,
+        product_summary: form.product_summary.trim() || null,
+        description: form.description.trim() || null,
+        kakao_channel_url: kakaoChannelHref(form.kakao_channel_url),
+        bank_name: form.bank_name.trim(),
+        account_number: form.account_number.trim(),
+        account_holder: form.account_holder.trim(),
+        is_active: form.is_active,
+      })
+      .select('id')
+      .single()
+    if (farmError || !farm) {
+      setPending(false)
+      setError(farmError?.message ?? '농가 생성에 실패했습니다.')
+      return
+    }
+    const { error: memberError } = await supabase.from('farm_members').insert({
+      farm_id: farm.id,
+      user_id: form.owner_user_id,
+      member_role: 'owner',
+    })
+    if (memberError) {
+      await supabase.from('farms').delete().eq('id', farm.id)
+      setPending(false)
+      setError(memberError.message)
+      return
+    }
+    setPending(false)
+    resetCreate()
+    await load()
+  }
+
+  async function toggleVisibility() {
+    if (!visibilityTarget || visibilityPending) return
+    setError('')
+    setVisibilityPending(true)
+    const { error: updateError } = await supabase
+      .from('farms')
+      .update({ is_active: !visibilityTarget.is_active })
+      .eq('id', visibilityTarget.id)
+    setVisibilityPending(false)
+    if (updateError) {
+      setError(updateError.message)
+      return
+    }
+    setVisibilityTarget(null)
+    await load()
+  }
+
   return (
     <AppShell navItems={adminNavItems} roleLabel="관리자" settingsPath="/admin/none">
-      <Header title="농가" subtitle={`${farms.length}곳`} />
+      <Header
+        title="농가"
+        subtitle={`${farms.length}곳`}
+        rightElement={
+          <Button size="sm" onClick={() => setShowCreate(true)}>
+            농가 추가
+          </Button>
+        }
+      />
       <div className="px-4 py-4 md:px-6 max-w-5xl mx-auto space-y-3">
+        <ErrorText>{error}</ErrorText>
+
+        {showCreate && (
+          <Card className="space-y-3">
+            <h3 className="font-semibold">새 농가</h3>
+            <Input
+              label="농가명"
+              value={form.name}
+              onChange={(e) => {
+                const name = e.target.value
+                setForm((prev) => ({
+                  ...prev,
+                  name,
+                  slug: slugTouched ? prev.slug : toSlug(name),
+                }))
+              }}
+              required
+            />
+            <Input
+              label="슬러그"
+              value={form.slug}
+              onChange={(e) => {
+                setSlugTouched(true)
+                setForm((prev) => ({ ...prev, slug: toSlug(e.target.value) }))
+              }}
+              placeholder="주문 페이지 주소 /farm/슬러그"
+            />
+            <Input
+              label="지역"
+              value={form.location}
+              onChange={(e) => setForm((prev) => ({ ...prev, location: e.target.value }))}
+            />
+            <Input
+              label="주요 품목"
+              value={form.product_summary}
+              onChange={(e) => setForm((prev) => ({ ...prev, product_summary: e.target.value }))}
+              placeholder="감귤, 한라봉"
+            />
+            <Textarea
+              label="소개"
+              value={form.description}
+              onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
+            />
+            <Input
+              label="카카오톡 비즈니스 프로필"
+              value={form.kakao_channel_url}
+              onChange={(e) => setForm((prev) => ({ ...prev, kakao_channel_url: e.target.value }))}
+              placeholder="https://pf.kakao.com/_xxxxx"
+            />
+            <Input
+              label="은행"
+              value={form.bank_name}
+              onChange={(e) => setForm((prev) => ({ ...prev, bank_name: e.target.value }))}
+              required
+            />
+            <Input
+              label="계좌"
+              value={form.account_number}
+              onChange={(e) => setForm((prev) => ({ ...prev, account_number: e.target.value }))}
+              required
+            />
+            <Input
+              label="예금주"
+              value={form.account_holder}
+              onChange={(e) => setForm((prev) => ({ ...prev, account_holder: e.target.value }))}
+              required
+            />
+            <AccountPicker
+              profiles={profiles}
+              selectedId={form.owner_user_id}
+              onSelect={(id) => setForm((prev) => ({ ...prev, owner_user_id: id }))}
+            />
+            <div className="flex gap-2">
+              <Button size="sm" disabled={pending} onClick={() => void createFarm()}>
+                생성
+              </Button>
+              <Button size="sm" variant="ghost" onClick={resetCreate}>
+                취소
+              </Button>
+            </div>
+          </Card>
+        )}
+
         {farms.map((farm) => (
-          <Card key={farm.id} className="space-y-2">
+          <Card
+            key={farm.id}
+            className="space-y-2"
+            onClick={
+              editing?.id === farm.id || bindFarmId === farm.id
+                ? undefined
+                : () => navigate(`/admin/farms/${farm.id}`)
+            }
+          >
             {editing?.id === farm.id ? (
-              <div className="space-y-2">
+              <div className="space-y-2" onClick={(e) => e.stopPropagation()}>
                 <Input
                   label="농가명"
                   value={editing.name}
@@ -38,6 +383,27 @@ export function AdminFarms() {
                   label="슬러그"
                   value={editing.slug}
                   onChange={(e) => setEditing({ ...editing, slug: e.target.value })}
+                />
+                <Input
+                  label="지역"
+                  value={editing.location ?? ''}
+                  onChange={(e) => setEditing({ ...editing, location: e.target.value })}
+                />
+                <Input
+                  label="주요 품목"
+                  value={editing.product_summary ?? ''}
+                  onChange={(e) => setEditing({ ...editing, product_summary: e.target.value })}
+                />
+                <Textarea
+                  label="소개"
+                  value={editing.description ?? ''}
+                  onChange={(e) => setEditing({ ...editing, description: e.target.value })}
+                />
+                <Input
+                  label="카카오톡 비즈니스 프로필"
+                  value={editing.kakao_channel_url ?? ''}
+                  onChange={(e) => setEditing({ ...editing, kakao_channel_url: e.target.value })}
+                  placeholder="https://pf.kakao.com/_xxxxx"
                 />
                 <Input
                   label="은행"
@@ -58,16 +424,30 @@ export function AdminFarms() {
                   <Button
                     size="sm"
                     onClick={async () => {
-                      await supabase
+                      setError('')
+                      const slug = toSlug(editing.slug)
+                      if (RESERVED_SLUGS.has(slug) && slug !== farm.slug) {
+                        setError('이 주문 페이지 주소는 사용할 수 없습니다.')
+                        return
+                      }
+                      const { error: updateError } = await supabase
                         .from('farms')
                         .update({
                           name: editing.name,
-                          slug: editing.slug,
+                          slug,
+                          location: editing.location?.trim() || null,
+                          product_summary: editing.product_summary?.trim() || null,
+                          description: editing.description?.trim() || null,
+                          kakao_channel_url: kakaoChannelHref(editing.kakao_channel_url),
                           bank_name: editing.bank_name,
                           account_number: editing.account_number,
                           account_holder: editing.account_holder,
                         })
                         .eq('id', farm.id)
+                      if (updateError) {
+                        setError(updateError.message)
+                        return
+                      }
                       setEditing(null)
                       await load()
                     }}
@@ -79,28 +459,93 @@ export function AdminFarms() {
                   </Button>
                 </div>
               </div>
-            ) : (
-              <>
-                <div className="flex justify-between">
-                  <div>
-                    <p className="font-bold">{farm.name}</p>
-                    <p className="text-xs text-muted">/o/{farm.slug}</p>
-                    <p className="text-sm mt-1">
-                      {farm.bank_name} {farm.account_number}
-                    </p>
-                  </div>
-                  <span className="text-xs">{farm.is_active ? '공개' : '비공개'}</span>
-                </div>
+            ) : bindFarmId === farm.id ? (
+              <div className="space-y-3">
+                <p className="font-bold">{farm.name}</p>
+                <AccountPicker
+                  profiles={profiles}
+                  selectedId={bindUserId}
+                  onSelect={setBindUserId}
+                  label="연결할 계정"
+                />
                 <div className="flex gap-2">
-                  <Button size="sm" variant="outline" onClick={() => setEditing(farm)}>
-                    수정
+                  <Button
+                    size="sm"
+                    disabled={pending || !bindUserId}
+                    onClick={async () => {
+                      setError('')
+                      setPending(true)
+                      try {
+                        await bindOwner(farm.id, bindUserId)
+                        setBindFarmId(null)
+                        setBindUserId('')
+                        await load()
+                      } catch (err) {
+                        setError(err instanceof Error ? err.message : '계정 연결에 실패했습니다.')
+                      } finally {
+                        setPending(false)
+                      }
+                    }}
+                  >
+                    연결
                   </Button>
                   <Button
                     size="sm"
                     variant="ghost"
-                    onClick={async () => {
-                      await supabase.from('farms').update({ is_active: !farm.is_active }).eq('id', farm.id)
-                      await load()
+                    onClick={() => {
+                      setBindFarmId(null)
+                      setBindUserId('')
+                    }}
+                  >
+                    취소
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div>
+                  <p className="font-bold">{farm.name}</p>
+                    <p className="text-xs text-muted">/farm/{farm.slug}</p>
+                  <p className="text-sm mt-1">
+                    {farm.bank_name} {farm.account_number}
+                  </p>
+                  {farm.kakao_channel_url && (
+                    <p className="text-xs text-muted mt-1">카카오톡 채널 연결됨</p>
+                  )}
+                  <p className="text-sm text-muted mt-1">
+                    담당 {profileLabel(profilesById.get(farm.owner_user_id))}
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setEditing(farm)
+                      setBindFarmId(null)
+                    }}
+                  >
+                    수정
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setBindFarmId(farm.id)
+                      setBindUserId(farm.owner_user_id)
+                      setEditing(null)
+                    }}
+                  >
+                    계정 연결
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setVisibilityTarget(farm)
                     }}
                   >
                     {farm.is_active ? '비공개' : '공개'}
@@ -110,7 +555,28 @@ export function AdminFarms() {
             )}
           </Card>
         ))}
+
+        {farms.length === 0 && !showCreate && (
+          <p className="text-sm text-muted">등록된 농가가 없습니다. 농가를 추가하고 담당 계정을 연결하세요.</p>
+        )}
       </div>
+
+      <ConfirmDialog
+        open={!!visibilityTarget}
+        title={visibilityTarget?.is_active ? '비공개로 전환할까요?' : '공개로 전환할까요?'}
+        description={
+          visibilityTarget?.is_active
+            ? `${visibilityTarget.name} 주문 페이지가 손님에게 보이지 않습니다.`
+            : `${visibilityTarget?.name ?? '이 농가'} 주문 페이지가 손님에게 보입니다.`
+        }
+        confirmLabel={visibilityTarget?.is_active ? '비공개로 전환' : '공개로 전환'}
+        pending={visibilityPending}
+        onCancel={() => {
+          if (visibilityPending) return
+          setVisibilityTarget(null)
+        }}
+        onConfirm={() => void toggleVisibility()}
+      />
     </AppShell>
   )
 }

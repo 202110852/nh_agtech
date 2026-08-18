@@ -1,30 +1,29 @@
-import { LayoutDashboard, Package, Truck } from 'lucide-react'
+import { ExternalLink, LayoutDashboard, Package, Truck } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { AppShell } from '../../components/layout/AppShell'
+import { Link, useNavigate } from 'react-router-dom'
 import { Header } from '../../components/layout/Header'
 import { NotificationBell } from '../../components/notifications/NotificationBell'
 import { OrderChart } from '../../components/shared/OrderChart'
 import { OrderItem } from '../../components/shared/OrderItem'
 import { StatCard } from '../../components/ui/StatCard'
-import { farmNavItems } from '../../config/farmNav'
 import { useAuth } from '../../lib/auth'
+import { useFarmWorkspace } from '../../lib/farmWorkspace'
 import { formatDate, formatPrice } from '../../lib/format'
 import { toOrderListModel, type OrderRow } from '../../lib/orders'
 import { supabase } from '../../lib/supabase'
 
 export function FarmDashboard() {
-  const { currentFarm, signOut } = useAuth()
+  const { farm, basePath, isAdminView } = useFarmWorkspace()
+  const { signOut } = useAuth()
   const navigate = useNavigate()
   const [orders, setOrders] = useState<OrderRow[]>([])
   const [trend, setTrend] = useState<{ label: string; day: string; orders: number; today?: boolean }[]>([])
 
   useEffect(() => {
-    if (!currentFarm) return
     supabase
       .from('orders')
       .select('*, order_items(*)')
-      .eq('farm_id', currentFarm.id)
+      .eq('farm_id', farm.id)
       .order('created_at', { ascending: false })
       .limit(50)
       .then(({ data }) => {
@@ -44,7 +43,7 @@ export function FarmDashboard() {
         })
         setTrend(days)
       })
-  }, [currentFarm])
+  }, [farm.id])
 
   const today = new Date().toDateString()
   const todayOrders = orders.filter((o) => new Date(o.created_at).toDateString() === today).length
@@ -58,19 +57,25 @@ export function FarmDashboard() {
     })
     .reduce((sum, o) => sum + o.total_amount, 0)
 
-  if (!currentFarm) return null
-
   return (
-    <AppShell navItems={farmNavItems} roleLabel="농가">
+    <>
       <Header
-        title={currentFarm.name}
-        subtitle={currentFarm.location ?? formatDate(currentFarm.created_at)}
+        title={farm.name}
+        subtitle={farm.location ?? formatDate(farm.created_at)}
+        showBack={isAdminView}
+        backTo="/admin/farms"
         rightElement={
           <>
-            <button type="button" className="text-sm text-muted" onClick={() => void signOut()}>
-              로그아웃
-            </button>
-            <NotificationBell />
+            <Link to={`/farm/${farm.slug}`} className="flex items-center gap-1 text-sm font-medium text-primary">
+              주문 페이지
+              <ExternalLink className="h-3.5 w-3.5" />
+            </Link>
+            {!isAdminView && (
+              <button type="button" className="text-sm text-muted" onClick={() => void signOut()}>
+                로그아웃
+              </button>
+            )}
+            <NotificationBell farmPath={`${basePath}/orders`} />
           </>
         }
       />
@@ -84,7 +89,11 @@ export function FarmDashboard() {
         <section>
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-bold text-gray-900">최근 주문</h3>
-            <button type="button" onClick={() => navigate('/farm/orders')} className="text-sm text-primary font-medium">
+            <button
+              type="button"
+              onClick={() => navigate(`${basePath}/orders`)}
+              className="text-sm text-primary font-medium"
+            >
               전체보기
             </button>
           </div>
@@ -96,6 +105,6 @@ export function FarmDashboard() {
           </div>
         </section>
       </div>
-    </AppShell>
+    </>
   )
 }

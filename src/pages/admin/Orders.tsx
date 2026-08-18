@@ -1,20 +1,22 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { AppShell } from '../../components/layout/AppShell'
 import { Header } from '../../components/layout/Header'
+import { FarmFilterChips } from '../../components/shared/FarmFilterChips'
 import { OrderItem } from '../../components/shared/OrderItem'
 import { adminNavItems } from '../../config/adminNav'
 import { statusLabels } from '../../lib/orderStatus'
-import { toOrderListModel, type OrderRow } from '../../lib/orders'
+import { farmsFromOrders, groupOrdersByFarm, toOrderListModel, type OrderRow } from '../../lib/orders'
 import { supabase } from '../../lib/supabase'
 import type { OrderStatus } from '../../types/models'
 
 export function AdminOrders() {
   const [orders, setOrders] = useState<OrderRow[]>([])
+  const [farmId, setFarmId] = useState<string | 'all'>('all')
 
   async function load() {
     const { data } = await supabase
       .from('orders')
-      .select('*, order_items(*), shipments(*)')
+      .select('*, order_items(*), shipments(*), farms(name, slug)')
       .order('created_at', { ascending: false })
     setOrders((data as OrderRow[]) ?? [])
   }
@@ -23,34 +25,60 @@ export function AdminOrders() {
     void load()
   }, [])
 
+  const farms = useMemo(() => farmsFromOrders(orders), [orders])
+  const visible = useMemo(
+    () => (farmId === 'all' ? orders : orders.filter((order) => order.farm_id === farmId)),
+    [farmId, orders],
+  )
+  const groups = useMemo(() => groupOrdersByFarm(visible), [visible])
+  const showGroupHeaders = farmId === 'all' && groups.length > 1
+
+  useEffect(() => {
+    if (farmId !== 'all' && !farms.some((farm) => farm.id === farmId)) {
+      setFarmId('all')
+    }
+  }, [farmId, farms])
+
   return (
     <AppShell navItems={adminNavItems} roleLabel="관리자" settingsPath="/admin/none">
-      <Header title="주문" subtitle={`${orders.length}건`} />
-      <div className="px-4 py-4 md:px-6 max-w-5xl mx-auto space-y-3">
-        {orders.map((order) => (
-          <OrderItem
-            key={order.id}
-            order={toOrderListModel(order)}
-            extra={
-              <div className="mt-3">
-                <select
-                  className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs"
-                  value={order.status}
-                  onChange={async (e) => {
-                    await supabase.from('orders').update({ status: e.target.value as OrderStatus }).eq('id', order.id)
-                    await load()
-                  }}
-                >
-                  {(Object.keys(statusLabels) as OrderStatus[]).map((status) => (
-                    <option key={status} value={status}>
-                      {statusLabels[status]}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            }
-          />
+      <Header title="주문" subtitle={`${visible.length}건`} />
+      <div className="px-4 py-4 md:px-6 max-w-5xl mx-auto space-y-4">
+        <FarmFilterChips farms={farms} selectedId={farmId} onSelect={setFarmId} allCount={orders.length} />
+        {groups.map((group) => (
+          <section key={group.farmId} className="space-y-3">
+            {showGroupHeaders && (
+              <h3 className="font-semibold text-gray-900">
+                {group.name}
+                <span className="ml-2 text-sm font-normal text-muted">{group.orders.length}건</span>
+              </h3>
+            )}
+            {group.orders.map((order) => (
+              <OrderItem
+                key={order.id}
+                order={toOrderListModel(order)}
+                extra={
+                  <div className="mt-3">
+                    <select
+                      className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs"
+                      value={order.status}
+                      onChange={async (e) => {
+                        await supabase.from('orders').update({ status: e.target.value as OrderStatus }).eq('id', order.id)
+                        await load()
+                      }}
+                    >
+                      {(Object.keys(statusLabels) as OrderStatus[]).map((status) => (
+                        <option key={status} value={status}>
+                          {statusLabels[status]}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                }
+              />
+            ))}
+          </section>
         ))}
+        {visible.length === 0 && <p className="text-center text-muted py-8">주문이 없습니다</p>}
       </div>
     </AppShell>
   )

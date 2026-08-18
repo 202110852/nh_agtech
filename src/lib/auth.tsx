@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { supabase } from './supabase'
-import type { Farm, FarmApplication, FarmMemberRole, Profile } from '../types/models'
+import type { Farm, FarmMemberRole, Profile } from '../types/models'
 import type { Session, User } from '@supabase/supabase-js'
 
 interface FarmMembership {
@@ -16,12 +16,10 @@ interface AuthState {
   profile: Profile | null
   memberships: FarmMembership[]
   currentFarm: Farm | null
-  latestApplication: FarmApplication | null
   isAdmin: boolean
   isFarmUser: boolean
   refresh: () => Promise<void>
   signInWithKakao: (next?: string) => Promise<void>
-  signInWithEmail: (email: string, password: string) => Promise<void>
   signOut: () => Promise<void>
 }
 
@@ -32,20 +30,12 @@ async function loadUserState(user: User | null) {
     return {
       profile: null as Profile | null,
       memberships: [] as FarmMembership[],
-      latestApplication: null as FarmApplication | null,
     }
   }
 
-  const [profileRes, memberRes, appRes] = await Promise.all([
+  const [profileRes, memberRes] = await Promise.all([
     supabase.from('profiles').select('*').eq('id', user.id).maybeSingle(),
     supabase.from('farm_members').select('farm_id, member_role').eq('user_id', user.id),
-    supabase
-      .from('farm_applications')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle(),
   ])
 
   const memberRows = memberRes.data ?? []
@@ -71,7 +61,6 @@ async function loadUserState(user: User | null) {
   return {
     profile: (profileRes.data as Profile | null) ?? null,
     memberships,
-    latestApplication: (appRes.data as FarmApplication | null) ?? null,
   }
 }
 
@@ -80,14 +69,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [profile, setProfile] = useState<Profile | null>(null)
   const [memberships, setMemberships] = useState<FarmMembership[]>([])
-  const [latestApplication, setLatestApplication] = useState<FarmApplication | null>(null)
 
   const hydrate = useCallback(async (nextSession: Session | null) => {
     setSession(nextSession)
     const state = await loadUserState(nextSession?.user ?? null)
     setProfile(state.profile)
     setMemberships(state.memberships)
-    setLatestApplication(state.latestApplication)
   }, [])
 
   const refresh = useCallback(async () => {
@@ -123,11 +110,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) throw error
   }, [])
 
-  const signInWithEmail = useCallback(async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) throw error
-  }, [])
-
   const signOut = useCallback(async () => {
     await supabase.auth.signOut()
   }, [])
@@ -141,12 +123,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       profile,
       memberships,
       currentFarm: memberships[0]?.farm ?? null,
-      latestApplication,
       isAdmin: profile?.role === 'admin',
       isFarmUser: memberships.length > 0,
       refresh,
       signInWithKakao,
-      signInWithEmail,
       signOut,
     }
   }, [
@@ -154,10 +134,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     session,
     profile,
     memberships,
-    latestApplication,
     refresh,
     signInWithKakao,
-    signInWithEmail,
     signOut,
   ])
 

@@ -15,14 +15,14 @@ npm run dev
 ## 역할
 
 - **주문자 / 농가**: 카카오 로그인
-- **관리자**: 이메일 + 비밀번호 (`/admin/login`)
+- **관리자**: 지정된 카카오 계정만 (`/admin/login` 또는 로그인 후 `/admin`)
 
 ## 화면
 
-- `/o/:farmSlug` — 농가 주문 페이지
-- `/farm` — 농가 주문·배송 (승인된 농가)
-- `/apply` — 농가 입점 신청
+- `/farm/:farmSlug` — 농가 주문 페이지
+- `/manage` — 농가 주문·배송 (계정에 연결된 농가)
 - `/admin` — 주문·입금·농가 전체 관리
+- `/admin/farms` — 농가 생성 및 담당 계정 연결
 
 ## 처음 쓰는 순서
 
@@ -45,14 +45,15 @@ npm run dev
    - Client ID는 `.env.local`의 `VITE_NAVER_MAP_CLIENT_ID`에 넣습니다.
    - Client Secret은 프론트에 넣지 말고 Edge Function 시크릿 `NAVER_MAP_CLIENT_SECRET`으로 등록합니다.
 
-8. Authentication → Providers → Email에서 **공개 회원가입은 끄고**, 관리자 계정은 Dashboard에서 직접 생성합니다.
-9. SQL 또는 Table Editor로 해당 사용자의 `profiles.role` 을 `admin` 으로 변경합니다.
+8. Authentication → Providers → Email에서 **공개 회원가입은 끕니다.** 관리자는 카카오로 로그인한 뒤, 해당 사용자만 `profiles.role` 을 `admin` 으로 올립니다. 다른 카카오 계정은 관리자 페이지에 들어갈 수 없습니다.
 
 ```sql
 update public.profiles
    set role = 'admin'
  where id = '<auth user uuid>';
 ```
+
+9. 관리자 → **농가**에서 농가를 만들고, 카카오로 이미 로그인한 담당 계정을 연결합니다. 연결된 계정만 `/manage` 에 들어갑니다.
 
 10. (선택) 웹 푸시용 VAPID 비밀키를 Edge Function 시크릿으로 등록합니다.
 
@@ -64,7 +65,7 @@ npx supabase secrets set VAPID_PUBLIC_KEY=... VAPID_PRIVATE_KEY=... --project-re
 
 ## 이후 연동 (기반만 준비됨)
 
-- 우체국 송장: `src/integrations/shipping`, Edge Function `kpost-shipment`
+- 우체국 송장: 상품에 저장한 택배 정보로 창구소포 엑셀을 농가별로 다운로드 (`/manage/products`, `/admin/shipments`)
 - 계좌 스크래핑(GND, 헥토파이낸셜, 뱅크샐러드, 코드에프): `src/integrations/deposit`, Edge Function `scrape-deposits`
 - 입금 확인 공통 진입점: `confirm-deposit`
 

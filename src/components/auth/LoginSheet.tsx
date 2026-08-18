@@ -32,8 +32,8 @@ function safeNext(raw?: string | null) {
 }
 
 export function dismissPath(pathname: string) {
-  const checkout = pathname.match(/^\/o\/([^/]+)\/checkout/)
-  if (checkout) return `/o/${checkout[1]}`
+  const checkout = pathname.match(/^\/(?:o|farm)\/([^/]+)\/checkout/)
+  if (checkout) return `/farm/${checkout[1]}`
   return '/'
 }
 

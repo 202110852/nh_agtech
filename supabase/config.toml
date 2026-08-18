@@ -22,3 +22,8 @@ verify_jwt = true
 
 [functions.naver-address]
 verify_jwt = true
+
+[storage.buckets.product-images]
+public = true
+file_size_limit = "5MiB"
+allowed_mime_types = ["image/jpeg", "image/png", "image/webp", "image/gif"]

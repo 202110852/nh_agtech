@@ -1,4 +1,5 @@
 import { Minus, Plus } from 'lucide-react'
+import { useLayoutEffect, useRef, type ReactNode } from 'react'
 import type { Product } from '../../types/models'
 import { formatPrice, productGradient } from '../../lib/format'
 import { Card } from '../ui/Card'
@@ -7,24 +8,64 @@ interface ProductCardProps {
   product: Product
   quantity?: number
   onChangeQuantity?: (quantity: number) => void
+  extra?: ReactNode
 }
 
-export function ProductCard({ product, quantity = 0, onChangeQuantity }: ProductCardProps) {
+const MIN_TITLE_PX = 11
+
+function FitTwoLineTitle({ text }: { text: string }) {
+  const ref = useRef<HTMLHeadingElement>(null)
+
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!el) return
+
+    const fit = () => {
+      el.style.fontSize = ''
+      const computed = getComputedStyle(el)
+      const baseSize = parseFloat(computed.fontSize)
+      const lineHeightPx = Number.isFinite(parseFloat(computed.lineHeight))
+        ? parseFloat(computed.lineHeight)
+        : baseSize * 1.375
+      const boxHeight = lineHeightPx * 2
+      el.style.height = `${boxHeight}px`
+      let size = baseSize
+      while (el.scrollHeight > boxHeight + 0.5 && size > MIN_TITLE_PX) {
+        size -= 0.5
+        el.style.fontSize = `${size}px`
+      }
+    }
+
+    fit()
+    const parent = el.parentElement
+    if (!parent) return undefined
+    const observer = new ResizeObserver(fit)
+    observer.observe(parent)
+    return () => observer.disconnect()
+  }, [text])
+
   return (
-    <Card className="overflow-hidden p-0">
+    <h3 ref={ref} className="overflow-hidden break-words font-bold leading-snug text-gray-900">
+      {text}
+    </h3>
+  )
+}
+
+export function ProductCard({ product, quantity = 0, onChangeQuantity, extra }: ProductCardProps) {
+  return (
+    <Card className="flex h-full flex-col overflow-hidden p-0">
       {product.image_url ? (
-        <img src={product.image_url} alt={product.name} className="h-36 w-full object-cover" />
+        <img src={product.image_url} alt={product.name} draggable={false} className="h-36 w-full shrink-0 object-cover" />
       ) : (
-        <div className={`h-36 bg-gradient-to-br ${productGradient(product.id)}`} />
+        <div className={`h-36 shrink-0 bg-gradient-to-br ${productGradient(product.id)}`} />
       )}
-      <div className="p-4">
-        <h3 className="font-bold text-gray-900">{product.name}</h3>
-        {product.unit && <p className="mt-0.5 text-sm text-muted">{product.unit}</p>}
-        {product.description && (
-          <p className="mt-2 text-sm text-gray-600 line-clamp-2">{product.description}</p>
-        )}
+      <div className="flex flex-1 flex-col p-4">
+        <FitTwoLineTitle text={product.name} />
+        <p className="mt-0.5 min-h-5 truncate text-sm text-muted">{product.unit || '\u00a0'}</p>
+        <p className="mt-2 min-h-10 line-clamp-2 text-sm text-gray-600">{product.description || '\u00a0'}</p>
         <p className="mt-2 text-lg font-bold text-primary">{formatPrice(product.price)}</p>
-        {onChangeQuantity && (
+        {extra}
+        {!extra && onChangeQuantity && (
           <div className="mt-3 flex items-center justify-between">
             <span className="text-xs text-muted">수량</span>
             <div className="flex items-center gap-2">

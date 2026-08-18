@@ -1,9 +1,44 @@
-import type { Order, OrderItem, Shipment } from '../types/models'
+import type { Farm, Order, OrderItem, Shipment } from '../types/models'
 import type { OrderListModel } from '../types/orderList'
 import { formatDateTime, fullAddress } from './format'
 
 export type { OrderListModel } from '../types/orderList'
-export type OrderRow = Order & { order_items?: OrderItem[] | null; shipments?: Shipment[] | null }
+export type FarmJoin = Pick<Farm, 'name' | 'slug'>
+export type OrderRow = Order & {
+  order_items?: OrderItem[] | null
+  shipments?: Shipment[] | null
+  farms?: FarmJoin | FarmJoin[] | null
+}
+
+export function unwrapFarm(farm: OrderRow['farms']): FarmJoin {
+  if (!farm) return { name: '농가', slug: 'farm' }
+  return Array.isArray(farm) ? (farm[0] ?? { name: '농가', slug: 'farm' }) : farm
+}
+
+export function groupOrdersByFarm<T extends OrderRow>(orders: T[]) {
+  const map = new Map<string, { farmId: string; name: string; slug: string; orders: T[] }>()
+  for (const order of orders) {
+    const farm = unwrapFarm(order.farms)
+    const current = map.get(order.farm_id) ?? {
+      farmId: order.farm_id,
+      name: farm.name,
+      slug: farm.slug,
+      orders: [],
+    }
+    current.orders.push(order)
+    map.set(order.farm_id, current)
+  }
+  return [...map.values()].sort((a, b) => a.name.localeCompare(b.name, 'ko'))
+}
+
+export function farmsFromOrders(orders: OrderRow[]) {
+  return groupOrdersByFarm(orders).map(({ farmId, name, slug, orders: farmOrders }) => ({
+    id: farmId,
+    name,
+    slug,
+    count: farmOrders.length,
+  }))
+}
 
 export function toOrderListModel(order: OrderRow): OrderListModel {
   const items = order.order_items ?? []

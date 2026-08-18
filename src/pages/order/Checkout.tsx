@@ -104,10 +104,10 @@ export function Checkout() {
   if (lines.length === 0) {
     return (
       <div className="min-h-dvh bg-surface">
-        <Header title="주문하기" showBack backTo={`/o/${farmSlug}`} />
+        <Header title="주문하기" showBack backTo={`/farm/${farmSlug}`} />
         <div className="px-4 py-10 text-center text-muted">
           담긴 상품이 없습니다.{' '}
-          <Link className="text-primary font-semibold" to={`/o/${farmSlug}`}>
+          <Link className="text-primary font-semibold" to={`/farm/${farmSlug}`}>
             상품 선택하기
           </Link>
         </div>
@@ -117,7 +117,7 @@ export function Checkout() {
 
   return (
     <div className="min-h-dvh bg-surface pb-10">
-      <Header title="주문하기" showBack backTo={`/o/${farmSlug}`} />
+      <Header title="주문하기" showBack backTo={`/farm/${farmSlug}`} />
       <form
         className="px-4 py-4 md:px-6 max-w-lg mx-auto space-y-4"
         onSubmit={async (e) => {

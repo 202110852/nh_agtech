@@ -11,17 +11,17 @@ import type { Order } from '../../types/models'
 
 export function AdminDashboard() {
   const { signOut } = useAuth()
-  const [pendingApps, setPendingApps] = useState(0)
+  const [farmCount, setFarmCount] = useState(0)
   const [pendingDeposits, setPendingDeposits] = useState(0)
   const [paidOrders, setPaidOrders] = useState(0)
   const [revenue, setRevenue] = useState(0)
 
   useEffect(() => {
     void Promise.all([
-      supabase.from('farm_applications').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
+      supabase.from('farms').select('id', { count: 'exact', head: true }),
       supabase.from('orders').select('*').order('created_at', { ascending: false }).limit(200),
-    ]).then(([apps, ordersRes]) => {
-      setPendingApps(apps.count ?? 0)
+    ]).then(([farms, ordersRes]) => {
+      setFarmCount(farms.count ?? 0)
       const orders = (ordersRes.data as Order[]) ?? []
       setPendingDeposits(orders.filter((o) => o.status === 'pending_deposit').length)
       setPaidOrders(orders.filter((o) => o.status === 'paid' || o.status === 'packing').length)
@@ -45,7 +45,7 @@ export function AdminDashboard() {
         }
       />
       <div className="px-4 py-4 md:px-6 max-w-5xl mx-auto grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatCard label="입점 대기" value={`${pendingApps}건`} icon={Sprout} />
+        <StatCard label="농가" value={`${farmCount}곳`} icon={Sprout} />
         <StatCard label="입금 대기" value={`${pendingDeposits}건`} icon={CreditCard} />
         <StatCard label="출고 대기" value={`${paidOrders}건`} icon={Truck} />
         <StatCard label="매출(최근)" value={formatPrice(revenue)} icon={Package} />

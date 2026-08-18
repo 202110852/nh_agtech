@@ -1,93 +1,57 @@
 import { Bell, Smartphone } from 'lucide-react'
 import { useState } from 'react'
-import { AppShell } from '../../components/layout/AppShell'
 import { Header } from '../../components/layout/Header'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
-import { Input, Textarea } from '../../components/ui/Field'
+import { Input } from '../../components/ui/Field'
 import { ErrorText } from '../../components/ui/Feedback'
-import { farmNavItems } from '../../config/farmNav'
 import { useAuth } from '../../lib/auth'
+import { useFarmWorkspace } from '../../lib/farmWorkspace'
 import { isPushSupported, registerServiceWorker, subscribePush } from '../../lib/push'
 import { supabase } from '../../lib/supabase'
 
 export function FarmSettings() {
-  const { currentFarm, profile, signOut } = useAuth()
-  const [form, setForm] = useState({
-    location: currentFarm?.location ?? '',
-    product_summary: currentFarm?.product_summary ?? '',
-    description: currentFarm?.description ?? '',
-    bank_name: currentFarm?.bank_name ?? '',
-    account_number: currentFarm?.account_number ?? '',
-    account_holder: currentFarm?.account_holder ?? '',
-    phone: profile?.phone ?? '',
-  })
+  const { farm, basePath, isAdminView } = useFarmWorkspace()
+  const { profile, signOut, refresh } = useAuth()
+  const [phone, setPhone] = useState(profile?.phone ?? '')
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
   const [pushMessage, setPushMessage] = useState('')
 
-  if (!currentFarm) return null
+  if (isAdminView) {
+    return (
+      <>
+        <Header title="설정" subtitle={farm.name} showBack backTo={basePath} />
+        <div className="px-4 py-4 md:px-6 max-w-5xl mx-auto">
+          <p className="text-sm text-muted">농가명, 계좌, 소개 등 농가 정보는 농가 목록에서만 수정할 수 있습니다.</p>
+        </div>
+      </>
+    )
+  }
 
   return (
-    <AppShell navItems={farmNavItems} roleLabel="농가">
-      <Header title="설정" subtitle={currentFarm.name} />
+    <>
+      <Header title="설정" subtitle={farm.name} />
       <div className="px-4 py-4 md:px-6 max-w-5xl mx-auto space-y-5">
         <Card className="space-y-3">
-          <h3 className="font-semibold">농가 정보</h3>
-          <Input
-            label="지역"
-            value={form.location}
-            onChange={(e) => setForm((p) => ({ ...p, location: e.target.value }))}
-          />
-          <Input
-            label="품목"
-            value={form.product_summary}
-            onChange={(e) => setForm((p) => ({ ...p, product_summary: e.target.value }))}
-          />
-          <Textarea
-            label="소개"
-            value={form.description}
-            onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
-          />
-        </Card>
-        <Card className="space-y-3">
-          <h3 className="font-semibold">입금 계좌</h3>
-          <Input label="은행" value={form.bank_name} onChange={(e) => setForm((p) => ({ ...p, bank_name: e.target.value }))} />
-          <Input
-            label="계좌번호"
-            value={form.account_number}
-            onChange={(e) => setForm((p) => ({ ...p, account_number: e.target.value }))}
-          />
-          <Input
-            label="예금주"
-            value={form.account_holder}
-            onChange={(e) => setForm((p) => ({ ...p, account_holder: e.target.value }))}
-          />
-          <Input label="연락처" value={form.phone} onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))} />
+          <h3 className="font-semibold">연락처</h3>
+          <Input label="연락처" value={phone} onChange={(e) => setPhone(e.target.value)} />
           <ErrorText>{error}</ErrorText>
           {message && <p className="text-sm text-primary">{message}</p>}
           <Button
             onClick={async () => {
               setError('')
               setMessage('')
-              const { error: farmError } = await supabase
-                .from('farms')
-                .update({
-                  location: form.location,
-                  product_summary: form.product_summary,
-                  description: form.description,
-                  bank_name: form.bank_name,
-                  account_number: form.account_number,
-                  account_holder: form.account_holder,
-                })
-                .eq('id', currentFarm.id)
-              if (farmError) {
-                setError(farmError.message)
+              if (!profile) return
+              const { error: profileError } = await supabase
+                .from('profiles')
+                .update({ phone })
+                .eq('id', profile.id)
+              if (profileError) {
+                setError(profileError.message)
                 return
               }
-              if (profile) {
-                await supabase.from('profiles').update({ phone: form.phone }).eq('id', profile.id)
-              }
+              await refresh()
               setMessage('저장했습니다.')
             }}
           >
@@ -140,6 +104,6 @@ export function FarmSettings() {
           로그아웃
         </Button>
       </div>
-    </AppShell>
+    </>
   )
 }

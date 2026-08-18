@@ -1,4 +1,4 @@
-import { Leaf, LogIn, Sprout } from 'lucide-react'
+import { Leaf, LogIn } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Header } from '../components/layout/Header'
@@ -40,7 +40,7 @@ export function Landing() {
               <button type="button" onClick={() => void signOut()} className="text-sm text-muted">
                 로그아웃
               </button>
-              <Link to={isAdmin ? '/admin' : isFarmUser ? '/farm' : '/me/orders'} className="text-sm font-semibold text-primary">
+              <Link to={isAdmin ? '/admin' : isFarmUser ? '/manage' : '/me/orders'} className="text-sm font-semibold text-primary">
                 내 페이지
               </Link>
             </div>
@@ -63,7 +63,8 @@ export function Landing() {
           </p>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-3">
+        {user ? null : (
+        <div className="grid gap-3 sm:grid-cols-2">
           <button type="button" onClick={() => openLogin()} className="w-full text-left">
             <Card className="h-full">
               <LogIn className="h-5 w-5 text-primary" />
@@ -71,22 +72,8 @@ export function Landing() {
               <p className="mt-1 text-sm text-muted">주문자 · 농가 공통</p>
             </Card>
           </button>
-          <Link
-            to="/apply"
-            onClick={(e) => {
-              if (!user) {
-                e.preventDefault()
-                openLogin({ next: '/apply' })
-              }
-            }}
-          >
-            <Card className="h-full">
-              <Sprout className="h-5 w-5 text-primary" />
-              <p className="mt-2 font-semibold">농가 입점 신청</p>
-              <p className="mt-1 text-sm text-muted">관리자 승인 후 이용</p>
-            </Card>
-          </Link>
         </div>
+        )}
 
         <section>
           <h3 className="mb-3 font-bold text-gray-900">주문할 농가</h3>
@@ -94,7 +81,7 @@ export function Landing() {
             <PageSpinner />
           ) : farms.length === 0 ? (
             <Card>
-              <p className="text-sm text-muted">아직 공개된 농가가 없습니다. 관리자 승인 후 목록에 나타납니다.</p>
+              <p className="text-sm text-muted">아직 공개된 농가가 없습니다.</p>
             </Card>
           ) : (
             <div className="grid gap-3 sm:grid-cols-2">
@@ -105,7 +92,7 @@ export function Landing() {
                   {farm.product_summary && (
                     <p className="mt-1 text-sm text-gray-700">{farm.product_summary}</p>
                   )}
-                  <Link to={`/o/${farm.slug}`}>
+                  <Link to={`/farm/${farm.slug}`}>
                     <Button className="mt-4" fullWidth>
                       주문하기
                     </Button>

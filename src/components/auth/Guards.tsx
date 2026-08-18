@@ -28,7 +28,7 @@ export function RequireAdmin({ children }: { children: ReactNode }) {
 }
 
 export function RequireFarm({ children }: { children: ReactNode }) {
-  const { loading, user, isFarmUser, latestApplication } = useAuth()
+  const { loading, user, isFarmUser } = useAuth()
   const location = useLocation()
   const { openLogin } = useLoginSheet()
   const next = `${location.pathname}${location.search}`
@@ -41,8 +41,5 @@ export function RequireFarm({ children }: { children: ReactNode }) {
   if (loading) return <PageSpinner />
   if (!user) return <div className="min-h-dvh bg-surface" />
   if (isFarmUser) return children
-  if (latestApplication?.status === 'pending') {
-    return <Navigate to="/apply/status" replace />
-  }
-  return <Navigate to="/apply" replace />
+  return <Navigate to="/" replace />
 }

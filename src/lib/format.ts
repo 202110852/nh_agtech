@@ -45,3 +45,13 @@ export function fullAddress(address: string, detail?: string | null, zonecode?: 
   const extra = detail ? ` ${detail}` : ''
   return `${zip}${address}${extra}`.trim()
 }
+
+export function kakaoChannelHref(value: string | null | undefined): string | null {
+  const raw = value?.trim()
+  if (!raw) return null
+  if (/^(javascript|data|vbscript):/i.test(raw)) return null
+  if (/^https?:\/\//i.test(raw)) return raw
+  if (/^pf\.kakao\.com\//i.test(raw)) return `https://${raw}`
+  const id = raw.replace(/^\/+/, '')
+  return `https://pf.kakao.com/${id}`
+}

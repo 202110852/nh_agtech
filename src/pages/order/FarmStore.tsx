@@ -2,12 +2,13 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Header } from '../../components/layout/Header'
 import { useLoginSheet } from '../../components/auth/LoginSheet'
+import { KakaoChannelButton } from '../../components/shared/KakaoChannelButton'
 import { ProductCard } from '../../components/shared/ProductCard'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
 import { PageSpinner } from '../../components/ui/Feedback'
 import { cartCount, getCart, setCart, type CartItem } from '../../lib/cart'
-import { formatPrice } from '../../lib/format'
+import { formatPrice, kakaoChannelHref } from '../../lib/format'
 import { useAuth } from '../../lib/auth'
 import { supabase } from '../../lib/supabase'
 import type { Farm, Product } from '../../types/models'
@@ -56,6 +57,8 @@ export function FarmStore() {
     setCartState(next)
   }
 
+  const kakaoHref = kakaoChannelHref(farm?.kakao_channel_url)
+
   if (loading) return <PageSpinner />
   if (!farm) {
     return (
@@ -86,11 +89,15 @@ export function FarmStore() {
         }
       />
       <div className="px-4 py-4 md:px-6 max-w-5xl mx-auto space-y-4">
-        {(farm.description || farm.product_summary) && (
+        {kakaoHref ? (
+          <Card>
+            <KakaoChannelButton href={kakaoHref} />
+          </Card>
+        ) : (farm.description || farm.product_summary) ? (
           <Card>
             <p className="text-sm text-gray-700">{farm.description || farm.product_summary}</p>
           </Card>
-        )}
+        ) : null}
         {products.length === 0 ? (
           <p className="text-center text-muted py-10">판매 중인 상품이 없습니다</p>
         ) : (
@@ -116,7 +123,7 @@ export function FarmStore() {
             <Button
               size="lg"
               onClick={() => {
-                const path = `/o/${farmSlug}/checkout`
+                const path = `/farm/${farmSlug}/checkout`
                 if (user) navigate(path)
                 else openLogin({ next: path })
               }}

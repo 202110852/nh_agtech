@@ -1,4 +1,4 @@
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
+import { BrowserRouter, Navigate, Route, Routes, useParams } from 'react-router-dom'
 import { RequireAdmin, RequireAuth, RequireFarm } from './components/auth/Guards'
 import { LoginSheetProvider } from './components/auth/LoginSheet'
 import { Landing } from './pages/Landing'
@@ -10,19 +10,22 @@ import { Checkout } from './pages/order/Checkout'
 import { OrderComplete } from './pages/order/OrderComplete'
 import { MyOrders } from './pages/me/MyOrders'
 import { MyOrderDetail } from './pages/me/MyOrderDetail'
-import { FarmApply } from './pages/farm/Apply'
-import { FarmApplyStatus } from './pages/farm/ApplyStatus'
+import { AdminFarmLayout, FarmOwnerLayout } from './lib/farmWorkspace'
 import { FarmDashboard } from './pages/farm/Dashboard'
 import { FarmOrders } from './pages/farm/Orders'
 import { FarmDelivery } from './pages/farm/Delivery'
+import { FarmProducts } from './pages/farm/Products'
 import { FarmSettings } from './pages/farm/Settings'
 import { AdminDashboard } from './pages/admin/Dashboard'
-import { AdminApplications } from './pages/admin/Applications'
 import { AdminFarms } from './pages/admin/Farms'
-import { AdminProducts } from './pages/admin/Products'
 import { AdminOrders } from './pages/admin/Orders'
 import { AdminDeposits } from './pages/admin/Deposits'
 import { AdminShipments } from './pages/admin/Shipments'
+
+function RedirectLegacyStore({ suffix = '' }: { suffix?: string }) {
+  const { farmSlug = '' } = useParams()
+  return <Navigate to={`/farm/${farmSlug}${suffix}`} replace />
+}
 
 export default function App() {
   return (
@@ -32,9 +35,16 @@ export default function App() {
         <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Login />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
-        <Route path="/o/:farmSlug" element={<FarmStore />} />
+        <Route path="/o/:farmSlug" element={<RedirectLegacyStore />} />
+        <Route path="/o/:farmSlug/checkout" element={<RedirectLegacyStore suffix="/checkout" />} />
+        <Route path="/farm" element={<Navigate to="/manage" replace />} />
+        <Route path="/farm/products" element={<Navigate to="/manage/products" replace />} />
+        <Route path="/farm/orders" element={<Navigate to="/manage/orders" replace />} />
+        <Route path="/farm/delivery" element={<Navigate to="/manage/delivery" replace />} />
+        <Route path="/farm/settings" element={<Navigate to="/manage/settings" replace />} />
+        <Route path="/farm/:farmSlug" element={<FarmStore />} />
         <Route
-          path="/o/:farmSlug/checkout"
+          path="/farm/:farmSlug/checkout"
           element={
             <RequireAuth>
               <Checkout />
@@ -65,55 +75,22 @@ export default function App() {
             </RequireAuth>
           }
         />
+        <Route path="/apply" element={<Navigate to="/" replace />} />
+        <Route path="/apply/status" element={<Navigate to="/" replace />} />
         <Route
-          path="/apply"
-          element={
-            <RequireAuth>
-              <FarmApply />
-            </RequireAuth>
-          }
-        />
-        <Route
-          path="/apply/status"
-          element={
-            <RequireAuth>
-              <FarmApplyStatus />
-            </RequireAuth>
-          }
-        />
-
-        <Route
-          path="/farm"
+          path="/manage"
           element={
             <RequireFarm>
-              <FarmDashboard />
+              <FarmOwnerLayout />
             </RequireFarm>
           }
-        />
-        <Route
-          path="/farm/orders"
-          element={
-            <RequireFarm>
-              <FarmOrders />
-            </RequireFarm>
-          }
-        />
-        <Route
-          path="/farm/delivery"
-          element={
-            <RequireFarm>
-              <FarmDelivery />
-            </RequireFarm>
-          }
-        />
-        <Route
-          path="/farm/settings"
-          element={
-            <RequireFarm>
-              <FarmSettings />
-            </RequireFarm>
-          }
-        />
+        >
+          <Route index element={<FarmDashboard />} />
+          <Route path="products" element={<FarmProducts />} />
+          <Route path="orders" element={<FarmOrders />} />
+          <Route path="delivery" element={<FarmDelivery />} />
+          <Route path="settings" element={<FarmSettings />} />
+        </Route>
 
         <Route path="/admin/login" element={<AdminLogin />} />
         <Route
@@ -124,14 +101,7 @@ export default function App() {
             </RequireAdmin>
           }
         />
-        <Route
-          path="/admin/applications"
-          element={
-            <RequireAdmin>
-              <AdminApplications />
-            </RequireAdmin>
-          }
-        />
+        <Route path="/admin/applications" element={<Navigate to="/admin/farms" replace />} />
         <Route
           path="/admin/farms"
           element={
@@ -141,13 +111,20 @@ export default function App() {
           }
         />
         <Route
-          path="/admin/products"
+          path="/admin/farms/:farmId"
           element={
             <RequireAdmin>
-              <AdminProducts />
+              <AdminFarmLayout />
             </RequireAdmin>
           }
-        />
+        >
+          <Route index element={<FarmDashboard />} />
+          <Route path="products" element={<FarmProducts />} />
+          <Route path="orders" element={<FarmOrders />} />
+          <Route path="delivery" element={<FarmDelivery />} />
+          <Route path="settings" element={<FarmSettings />} />
+        </Route>
+        <Route path="/admin/products" element={<Navigate to="/admin/farms" replace />} />
         <Route
           path="/admin/orders"
           element={
@@ -173,9 +150,9 @@ export default function App() {
           }
         />
 
-        <Route path="/orders" element={<Navigate to="/farm/orders" replace />} />
-        <Route path="/delivery" element={<Navigate to="/farm/delivery" replace />} />
-        <Route path="/settings" element={<Navigate to="/farm/settings" replace />} />
+        <Route path="/orders" element={<Navigate to="/manage/orders" replace />} />
+        <Route path="/delivery" element={<Navigate to="/manage/delivery" replace />} />
+        <Route path="/settings" element={<Navigate to="/manage/settings" replace />} />
         <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </LoginSheetProvider>

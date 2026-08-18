@@ -1,11 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { AppShell } from '../../components/layout/AppShell'
 import { Header } from '../../components/layout/Header'
 import { NotificationBell } from '../../components/notifications/NotificationBell'
+import { DepositConfirmExtra } from '../../components/shared/DepositConfirmExtra'
 import { OrderItem } from '../../components/shared/OrderItem'
-import { farmNavItems } from '../../config/farmNav'
-import { useAuth } from '../../lib/auth'
+import { useFarmWorkspace } from '../../lib/farmWorkspace'
 import { farmUpdatableStatuses, statusLabels } from '../../lib/orderStatus'
 import { toOrderListModel, type OrderRow } from '../../lib/orders'
 import { supabase } from '../../lib/supabase'
@@ -23,20 +22,19 @@ const filters: { id: FilterStatus; label: string }[] = [
 ]
 
 export function FarmOrders() {
-  const { currentFarm } = useAuth()
+  const { farm, basePath, isAdminView } = useFarmWorkspace()
   const [params] = useSearchParams()
   const [filter, setFilter] = useState<FilterStatus>('all')
   const [orders, setOrders] = useState<OrderRow[]>([])
 
   useEffect(() => {
-    if (!currentFarm) return
     supabase
       .from('orders')
       .select('*, order_items(*), shipments(*)')
-      .eq('farm_id', currentFarm.id)
+      .eq('farm_id', farm.id)
       .order('created_at', { ascending: false })
       .then(({ data }) => setOrders((data as OrderRow[]) ?? []))
-  }, [currentFarm])
+  }, [farm.id])
 
   const filtered = filter === 'all' ? orders : orders.filter((order) => order.status === filter)
   const highlight = params.get('highlight')
@@ -55,8 +53,14 @@ export function FarmOrders() {
   }
 
   return (
-    <AppShell navItems={farmNavItems} roleLabel="농가">
-      <Header title="주문 관리" subtitle={`총 ${orders.length}건`} rightElement={<NotificationBell />} />
+    <>
+      <Header
+        title="주문 관리"
+        subtitle={`총 ${orders.length}건`}
+        showBack={isAdminView}
+        backTo={basePath}
+        rightElement={<NotificationBell farmPath={`${basePath}/orders`} />}
+      />
       <div className="px-4 py-4 md:px-6 max-w-5xl mx-auto space-y-4">
         <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
           {filters.map(({ id, label }) => (
@@ -81,7 +85,17 @@ export function FarmOrders() {
                 <OrderItem
                   order={toOrderListModel(order)}
                   extra={
-                    order.status !== 'pending_deposit' && order.status !== 'cancelled' ? (
+                    isAdminView && order.status === 'pending_deposit' ? (
+                      <DepositConfirmExtra
+                        orderId={order.id}
+                        depositCode={order.deposit_code}
+                        onConfirmed={() => {
+                          setOrders((prev) =>
+                            prev.map((row) => (row.id === order.id ? { ...row, status: 'paid' } : row)),
+                          )
+                        }}
+                      />
+                    ) : order.status !== 'pending_deposit' && order.status !== 'cancelled' ? (
                       <div className="mt-3">
                         <select
                           className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs"
@@ -105,6 +119,6 @@ export function FarmOrders() {
           )}
         </div>
       </div>
-    </AppShell>
+    </>
   )
 }

@@ -35,7 +35,7 @@ export async function notifyFarmMembers(
   await sendPush((subs ?? []) as PushRow[], {
     title: params.title,
     body: params.body,
-    url: params.url ?? '/farm/orders',
+    url: params.url ?? '/manage/orders',
   })
 }
 

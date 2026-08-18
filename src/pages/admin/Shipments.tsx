@@ -1,59 +1,53 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { AppShell } from '../../components/layout/AppShell'
 import { Header } from '../../components/layout/Header'
+import { KpostParcelExport } from '../../components/shared/KpostParcelExport'
+import { OrderItem } from '../../components/shared/OrderItem'
 import { Card } from '../../components/ui/Card'
-import { Button } from '../../components/ui/Button'
 import { adminNavItems } from '../../config/adminNav'
-import { invokeFunction } from '../../lib/functions'
+import { groupOrdersByFarm, toOrderListModel, type OrderRow } from '../../lib/orders'
 import { supabase } from '../../lib/supabase'
-import type { Order, Shipment } from '../../types/models'
 
-type ShipmentRow = Shipment & { orders?: Pick<Order, 'order_no' | 'recipient_name'> | null }
+const ORDER_SELECT =
+  '*, order_items(*, product:products(parcel_weight_kg, parcel_volume_cm, parcel_content_code, parcel_delivery_type)), farms(name, slug)'
 
 export function AdminShipments() {
-  const [rows, setRows] = useState<ShipmentRow[]>([])
-  const [message, setMessage] = useState('')
+  const [orders, setOrders] = useState<OrderRow[]>([])
 
   useEffect(() => {
     supabase
-      .from('shipments')
-      .select('*, orders(order_no, recipient_name)')
+      .from('orders')
+      .select(ORDER_SELECT)
+      .in('status', ['paid', 'packing'])
       .order('created_at', { ascending: false })
-      .then(({ data }) => setRows((data as ShipmentRow[]) ?? []))
+      .then(({ data }) => setOrders((data as OrderRow[]) ?? []))
   }, [])
+
+  const groups = useMemo(() => groupOrdersByFarm(orders), [orders])
 
   return (
     <AppShell navItems={adminNavItems} roleLabel="관리자" settingsPath="/admin/none">
-      <Header title="송장" subtitle="우체국 연동 준비" />
-      <div className="px-4 py-4 md:px-6 max-w-5xl mx-auto space-y-3">
-        <Card>
-          <p className="text-sm text-muted">
-            우체국 간편접수 API는 아직 연동되지 않았습니다. 신청 시 스텁 응답만 반환합니다.
-          </p>
-          <Button
-            className="mt-3"
-            variant="outline"
-            onClick={async () => {
-              try {
-                const result = await invokeFunction<{ message?: string }>('kpost-shipment', { orderIds: [] })
-                setMessage(result.message ?? '연동 준비 중입니다.')
-              } catch (err) {
-                setMessage(err instanceof Error ? err.message : '스텁 호출 실패')
-              }
-            }}
-          >
-            연동 상태 확인
-          </Button>
-          {message && <p className="mt-2 text-sm text-primary">{message}</p>}
-        </Card>
-        {rows.map((row) => (
-          <Card key={row.id}>
-            <p className="font-semibold">{row.orders?.order_no ?? row.order_id}</p>
-            <p className="text-sm text-muted">
-              {row.provider} · {row.status} · {row.tracking_number ?? '운송장 없음'}
-            </p>
-          </Card>
+      <Header title="송장" subtitle="농가별 우체국 창구소포 엑셀" />
+      <div className="px-4 py-4 md:px-6 max-w-5xl mx-auto space-y-4">
+        <p className="text-sm text-muted">
+          중량·부피·내용품코드는 상품에 저장된 값으로 채워집니다. 인터넷우체국 창구소포접수에서 엑셀을 올린 뒤
+          주소검증하세요.
+        </p>
+        {groups.map((group) => (
+          <div key={group.farmId} className="space-y-3">
+            <Card className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h3 className="font-semibold">{group.name}</h3>
+                <p className="text-sm text-muted">출고 대기 {group.orders.length}건</p>
+              </div>
+              <KpostParcelExport orders={group.orders} fileStem={`kpost_${group.slug}`} />
+            </Card>
+            {group.orders.map((order) => (
+              <OrderItem key={order.id} order={toOrderListModel(order)} />
+            ))}
+          </div>
         ))}
+        {orders.length === 0 && <p className="text-center text-muted py-8">출고 대기 주문이 없습니다</p>}
       </div>
     </AppShell>
   )

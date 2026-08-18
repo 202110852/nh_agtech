@@ -7,7 +7,7 @@ self.addEventListener('activate', (event) => {
 })
 
 self.addEventListener('push', (event) => {
-  let data = { title: '팜어시', body: '새 알림이 있습니다.', url: '/farm' }
+  let data = { title: '팜어시', body: '새 알림이 있습니다.', url: '/manage' }
   try {
     if (event.data) data = { ...data, ...event.data.json() }
   } catch {
@@ -18,14 +18,14 @@ self.addEventListener('push', (event) => {
       body: data.body,
       icon: '/pwa-192.svg',
       badge: '/pwa-192.svg',
-      data: { url: data.url || '/farm' },
+      data: { url: data.url || '/manage' },
     }),
   )
 })
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close()
-  const url = event.notification.data?.url || '/farm'
+  const url = event.notification.data?.url || '/manage'
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
       for (const client of clients) {

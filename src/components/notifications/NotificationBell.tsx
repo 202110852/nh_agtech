@@ -6,7 +6,7 @@ import { useAuth } from '../../lib/auth'
 import { formatDateTime } from '../../lib/format'
 import type { AppNotification } from '../../types/models'
 
-export function NotificationBell({ farmPath = '/farm/orders' }: { farmPath?: string }) {
+export function NotificationBell({ farmPath = '/manage/orders' }: { farmPath?: string }) {
   const { user } = useAuth()
   const [open, setOpen] = useState(false)
   const [items, setItems] = useState<AppNotification[]>([])

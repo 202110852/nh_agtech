@@ -1,6 +1,5 @@
 export type ProfileRole = 'customer' | 'admin'
 export type FarmMemberRole = 'owner' | 'staff'
-export type ApplicationStatus = 'pending' | 'approved' | 'rejected'
 export type OrderStatus =
   | 'pending_deposit'
   | 'paid'
@@ -31,6 +30,7 @@ export interface Farm {
   location: string | null
   product_summary: string | null
   description: string | null
+  kakao_channel_url: string | null
   bank_name: string
   account_number: string
   account_holder: string
@@ -46,27 +46,6 @@ export interface FarmMember {
   created_at: string
 }
 
-export interface FarmApplication {
-  id: string
-  user_id: string
-  farm_name: string
-  owner_name: string
-  location: string | null
-  product_summary: string | null
-  description: string | null
-  bank_name: string
-  account_number: string
-  account_holder: string
-  phone: string | null
-  status: ApplicationStatus
-  review_note: string | null
-  reviewed_by: string | null
-  reviewed_at: string | null
-  farm_id: string | null
-  created_at: string
-  updated_at: string
-}
-
 export interface Product {
   id: string
   farm_id: string
@@ -77,6 +56,10 @@ export interface Product {
   image_url: string | null
   is_active: boolean
   sort_order: number
+  parcel_weight_kg: string
+  parcel_volume_cm: string
+  parcel_content_code: string
+  parcel_delivery_type: string
   created_at: string
   updated_at: string
 }
@@ -126,6 +109,7 @@ export interface OrderItem {
   unit_price: number
   quantity: number
   line_amount: number
+  product?: Pick<Product, 'parcel_weight_kg' | 'parcel_volume_cm' | 'parcel_content_code' | 'parcel_delivery_type'> | null
 }
 
 export interface OrderWithItems extends Order {
