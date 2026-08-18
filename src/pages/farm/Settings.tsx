@@ -11,7 +11,7 @@ import { isPushSupported, registerServiceWorker, subscribePush } from '../../lib
 import { supabase } from '../../lib/supabase'
 
 export function FarmSettings() {
-  const { farm, basePath, isAdminView } = useFarmWorkspace()
+  const { farm, isAdminView } = useFarmWorkspace()
   const { profile, signOut, refresh } = useAuth()
   const [phone, setPhone] = useState(profile?.phone ?? '')
   const [message, setMessage] = useState('')
@@ -21,7 +21,7 @@ export function FarmSettings() {
   if (isAdminView) {
     return (
       <>
-        <Header title="설정" subtitle={farm.name} showBack backTo={basePath} />
+        <Header title="설정" subtitle={farm.name} />
         <div className="px-4 py-4 md:px-6 max-w-5xl mx-auto">
           <p className="text-sm text-muted">농가명, 계좌, 소개 등 농가 정보는 농가 목록에서만 수정할 수 있습니다.</p>
         </div>

@@ -20,7 +20,7 @@ import { AddressPicker } from '../../components/shared/AddressPicker'
 import { FarmSharePreview } from '../../components/shared/FarmSharePreview'
 import { adminNavItems } from '../../config/adminNav'
 import { kakaoChannelHref, safeHttpUrl } from '../../lib/format'
-import { resolveFarmShareText } from '../../lib/farmShareText'
+import { farmLandingPath, resolveFarmShareText } from '../../lib/farmShareText'
 import { toSlug } from '../../lib/slug'
 import { supabase } from '../../lib/supabase'
 import { parseLandingBlocks, type Farm, type Profile } from '../../types/models'
@@ -263,9 +263,16 @@ export function AdminFarms() {
   const [pending, setPending] = useState(false)
   const [visibilityTarget, setVisibilityTarget] = useState<Farm | null>(null)
   const [visibilityPending, setVisibilityPending] = useState(false)
+  const [visibilityFilter, setVisibilityFilter] = useState<'all' | 'active' | 'inactive'>('active')
 
   const profilesById = useMemo(() => new Map(profiles.map((p) => [p.id, p])), [profiles])
   const takenSlugs = useMemo(() => new Set(farms.map((f) => f.slug)), [farms])
+  const activeCount = useMemo(() => farms.filter((farm) => farm.is_active).length, [farms])
+  const visibleFarms = useMemo(() => {
+    if (visibilityFilter === 'active') return farms.filter((farm) => farm.is_active)
+    if (visibilityFilter === 'inactive') return farms.filter((farm) => !farm.is_active)
+    return farms
+  }, [farms, visibilityFilter])
 
   async function load() {
     const [farmRes, profileRes] = await Promise.all([
@@ -409,7 +416,7 @@ export function AdminFarms() {
     <AppShell navItems={adminNavItems} roleLabel="관리자" settingsPath="/admin/none">
       <Header
         title="농가"
-        subtitle={`${farms.length}곳`}
+        subtitle={`${visibleFarms.length}곳`}
         rightElement={
           <Button
             size="sm"
@@ -424,6 +431,27 @@ export function AdminFarms() {
       />
       <div className="px-4 py-4 md:px-6 max-w-5xl mx-auto space-y-3">
         <ErrorText>{error}</ErrorText>
+        <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
+          {(
+            [
+              { id: 'all' as const, label: '전체', count: farms.length },
+              { id: 'active' as const, label: '활성화', count: activeCount },
+              { id: 'inactive' as const, label: '비활성화', count: farms.length - activeCount },
+            ] as const
+          ).map(({ id, label, count }) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setVisibilityFilter(id)}
+              className={`shrink-0 rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
+                visibilityFilter === id ? 'bg-primary text-white' : 'bg-white text-gray-600 border border-gray-200'
+              }`}
+            >
+              {label}
+              <span className="ml-1 text-xs opacity-70">({count})</span>
+            </button>
+          ))}
+        </div>
 
         {showCreate && (
           <Card className="space-y-3">
@@ -564,7 +592,7 @@ export function AdminFarms() {
           </Card>
         )}
 
-        {farms.map((farm) => (
+        {visibleFarms.map((farm) => (
           <Card
             key={farm.id}
             className="space-y-2"
@@ -823,6 +851,16 @@ export function AdminFarms() {
                     variant="outline"
                     onClick={(e) => {
                       e.stopPropagation()
+                      navigate(farmLandingPath(farm.slug))
+                    }}
+                  >
+                    랜딩페이지
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={(e) => {
+                      e.stopPropagation()
                       setBindFarmId(farm.id)
                       setBindUserId(farm.owner_user_id)
                       setEditing(null)
@@ -838,7 +876,7 @@ export function AdminFarms() {
                       setVisibilityTarget(farm)
                     }}
                   >
-                    {farm.is_active ? '비공개' : '공개'}
+                    {farm.is_active ? '비활성화' : '활성화'}
                   </Button>
                 </div>
               </>
@@ -846,20 +884,28 @@ export function AdminFarms() {
           </Card>
         ))}
 
-        {farms.length === 0 && !showCreate && (
-          <p className="text-sm text-muted">등록된 농가가 없습니다. 농가를 추가하고 담당 계정을 연결하세요.</p>
+        {visibleFarms.length === 0 && !showCreate && (
+          <p className="text-sm text-muted">
+            {farms.length === 0
+              ? '등록된 농가가 없습니다. 농가를 추가하고 담당 계정을 연결하세요.'
+              : visibilityFilter === 'active'
+                ? '활성화된 농가가 없습니다.'
+                : visibilityFilter === 'inactive'
+                  ? '비활성화된 농가가 없습니다.'
+                  : '등록된 농가가 없습니다.'}
+          </p>
         )}
       </div>
 
       <ConfirmDialog
         open={!!visibilityTarget}
-        title={visibilityTarget?.is_active ? '비공개로 전환할까요?' : '공개로 전환할까요?'}
+        title={visibilityTarget?.is_active ? '비활성화할까요?' : '활성화할까요?'}
         description={
           visibilityTarget?.is_active
             ? `${visibilityTarget.name} 주문 페이지가 손님에게 보이지 않습니다.`
             : `${visibilityTarget?.name ?? '이 농가'} 주문 페이지가 손님에게 보입니다.`
         }
-        confirmLabel={visibilityTarget?.is_active ? '비공개로 전환' : '공개로 전환'}
+        confirmLabel={visibilityTarget?.is_active ? '비활성화' : '활성화'}
         pending={visibilityPending}
         onCancel={() => {
           if (visibilityPending) return

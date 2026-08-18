@@ -41,6 +41,10 @@ export function RedirectToFarmWorkspace({ suffix }: { suffix?: string }) {
   if (loading) return <PageSpinner />
   if (!user) return <div className="min-h-dvh bg-surface" />
 
+  if (isAdmin && location.pathname.startsWith('/manage')) {
+    return <Navigate to="/admin" replace />
+  }
+
   const pathSuffix =
     suffix ?? (location.pathname.startsWith('/manage') ? location.pathname.replace(/^\/manage/, '') : '')
   if (currentFarm) {

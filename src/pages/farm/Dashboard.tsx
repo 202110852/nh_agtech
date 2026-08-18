@@ -63,8 +63,6 @@ export function FarmDashboard() {
       <Header
         title={farm.name}
         subtitle={farm.location ?? formatDate(farm.created_at)}
-        showBack={isAdminView}
-        backTo={`/farm/${farm.slug}/landingpage`}
         rightElement={
           <>
             <FarmOrderPageLink slug={farm.slug} />

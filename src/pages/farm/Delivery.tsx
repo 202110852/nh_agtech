@@ -8,7 +8,7 @@ import { toOrderListModel, type OrderRow } from '../../lib/orders'
 import { supabase } from '../../lib/supabase'
 
 export function FarmDelivery() {
-  const { farm, basePath, isAdminView } = useFarmWorkspace()
+  const { farm, basePath } = useFarmWorkspace()
   const [orders, setOrders] = useState<OrderRow[]>([])
 
   useEffect(() => {
@@ -26,8 +26,6 @@ export function FarmDelivery() {
       <Header
         title="배송 관리"
         subtitle={`출고 대기 ${orders.length}건`}
-        showBack={isAdminView}
-        backTo={basePath}
         rightElement={
           <>
             <FarmOrderPageLink slug={farm.slug} />

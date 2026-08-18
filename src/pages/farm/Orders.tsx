@@ -58,8 +58,6 @@ export function FarmOrders() {
       <Header
         title="주문 관리"
         subtitle={`총 ${orders.length}건`}
-        showBack={isAdminView}
-        backTo={basePath}
         rightElement={
           <>
             <FarmOrderPageLink slug={farm.slug} />

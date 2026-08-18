@@ -6,7 +6,7 @@ import { ProductManager } from '../../components/shared/ProductManager'
 import { useFarmWorkspace } from '../../lib/farmWorkspace'
 
 export function FarmProducts() {
-  const { farm, basePath, isAdminView } = useFarmWorkspace()
+  const { farm, basePath } = useFarmWorkspace()
   const [count, setCount] = useState(0)
 
   return (
@@ -14,8 +14,6 @@ export function FarmProducts() {
       <Header
         title="상품 관리"
         subtitle={`총 ${count}건`}
-        showBack={isAdminView}
-        backTo={basePath}
         rightElement={
           <>
             <FarmOrderPageLink slug={farm.slug} />
