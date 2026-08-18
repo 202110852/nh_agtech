@@ -1,5 +1,5 @@
-import { Leaf, LogIn } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { Leaf, LogIn, Search } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Header } from '../components/layout/Header'
 import { useLoginSheet } from '../components/auth/LoginSheet'
@@ -15,6 +15,7 @@ export function Landing() {
   const { user, signOut } = useAuth()
   const { openLogin } = useLoginSheet()
   const [farms, setFarms] = useState<Farm[]>([])
+  const [query, setQuery] = useState('')
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -28,6 +29,18 @@ export function Landing() {
         setLoading(false)
       })
   }, [])
+
+  const filteredFarms = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    if (!q) return farms
+    return farms.filter((farm) => {
+      const haystack = [farm.name, farm.location, farm.product_summary]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase()
+      return haystack.includes(q)
+    })
+  }, [farms, query])
 
   return (
     <div className="min-h-dvh bg-surface">
@@ -72,15 +85,30 @@ export function Landing() {
 
         <section>
           <h3 className="mb-3 font-bold text-gray-900">주문할 농가</h3>
+          <div className="relative mb-3">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
+            <input
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="농가명, 지역, 품목"
+              aria-label="농가 검색"
+              className="w-full rounded-xl border border-gray-200 bg-white py-2.5 pl-10 pr-4 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
+            />
+          </div>
           {loading ? (
             <PageSpinner />
           ) : farms.length === 0 ? (
             <Card>
               <p className="text-sm text-muted">아직 공개된 농가가 없습니다.</p>
             </Card>
+          ) : filteredFarms.length === 0 ? (
+            <Card>
+              <p className="text-sm text-muted">검색 결과가 없습니다.</p>
+            </Card>
           ) : (
             <div className="grid gap-3 sm:grid-cols-2">
-              {farms.map((farm) => (
+              {filteredFarms.map((farm) => (
                 <Card key={farm.id}>
                   <p className="font-bold text-gray-900">{farm.name}</p>
                   <p className="mt-1 text-sm text-muted">{farm.location || '지역 미등록'}</p>
