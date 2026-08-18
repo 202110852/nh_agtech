@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { Link, Navigate } from 'react-router-dom'
+import { Navigate } from 'react-router-dom'
 import { Header } from '../../components/layout/Header'
+import { useLoginSheet } from '../../components/auth/LoginSheet'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
 import { Input } from '../../components/ui/Field'
@@ -9,6 +10,7 @@ import { useAuth } from '../../lib/auth'
 
 export function AdminLogin() {
   const { isAdmin, user, loading, signInWithEmail } = useAuth()
+  const { openLogin } = useLoginSheet()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -56,9 +58,9 @@ export function AdminLogin() {
         </Card>
         <p className="mt-4 text-center text-sm text-muted">
           주문자/농가이신가요?{' '}
-          <Link to="/login" className="text-primary font-semibold">
+          <button type="button" onClick={() => openLogin()} className="text-primary font-semibold">
             카카오 로그인
-          </Link>
+          </button>
         </p>
       </div>
     </div>

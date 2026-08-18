@@ -35,7 +35,7 @@ export function OrderComplete() {
       })
   }, [orderId])
 
-  if (loading) return <PageSpinner />
+  if (loading) return <PageSpinner label="주문 내역을 불러오는 중..." />
   if (!order) {
     return <div className="min-h-dvh flex items-center justify-center text-muted">주문을 찾을 수 없습니다</div>
   }

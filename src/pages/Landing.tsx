@@ -1,7 +1,8 @@
-import { Leaf, LogIn, Sprout, Store } from 'lucide-react'
+import { Leaf, LogIn, Sprout } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Header } from '../components/layout/Header'
+import { useLoginSheet } from '../components/auth/LoginSheet'
 import { Card } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
 import { PageSpinner } from '../components/ui/Feedback'
@@ -11,7 +12,8 @@ import { supabase } from '../lib/supabase'
 import type { Farm } from '../types/models'
 
 export function Landing() {
-  const { user, isAdmin, isFarmUser } = useAuth()
+  const { user, isAdmin, isFarmUser, signOut } = useAuth()
+  const { openLogin } = useLoginSheet()
   const [farms, setFarms] = useState<Farm[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -34,13 +36,18 @@ export function Landing() {
         subtitle={BRAND.tagline}
         rightElement={
           user ? (
-            <Link to={isAdmin ? '/admin' : isFarmUser ? '/farm' : '/me/orders'} className="text-sm font-semibold text-primary">
-              내 페이지
-            </Link>
+            <div className="flex items-center gap-3">
+              <button type="button" onClick={() => void signOut()} className="text-sm text-muted">
+                로그아웃
+              </button>
+              <Link to={isAdmin ? '/admin' : isFarmUser ? '/farm' : '/me/orders'} className="text-sm font-semibold text-primary">
+                내 페이지
+              </Link>
+            </div>
           ) : (
-            <Link to="/login" className="text-sm font-semibold text-primary">
+            <button type="button" onClick={() => openLogin()} className="text-sm font-semibold text-primary">
               로그인
-            </Link>
+            </button>
           )
         }
       />
@@ -57,25 +64,26 @@ export function Landing() {
         </div>
 
         <div className="grid gap-3 sm:grid-cols-3">
-          <Link to="/login">
+          <button type="button" onClick={() => openLogin()} className="w-full text-left">
             <Card className="h-full">
               <LogIn className="h-5 w-5 text-primary" />
               <p className="mt-2 font-semibold">카카오 로그인</p>
               <p className="mt-1 text-sm text-muted">주문자 · 농가 공통</p>
             </Card>
-          </Link>
-          <Link to="/apply">
+          </button>
+          <Link
+            to="/apply"
+            onClick={(e) => {
+              if (!user) {
+                e.preventDefault()
+                openLogin({ next: '/apply' })
+              }
+            }}
+          >
             <Card className="h-full">
               <Sprout className="h-5 w-5 text-primary" />
               <p className="mt-2 font-semibold">농가 입점 신청</p>
               <p className="mt-1 text-sm text-muted">관리자 승인 후 이용</p>
-            </Card>
-          </Link>
-          <Link to="/admin/login">
-            <Card className="h-full">
-              <Store className="h-5 w-5 text-primary" />
-              <p className="mt-2 font-semibold">관리자</p>
-              <p className="mt-1 text-sm text-muted">이메일 로그인</p>
             </Card>
           </Link>
         </div>

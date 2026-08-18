@@ -14,7 +14,7 @@ import { toOrderListModel, type OrderRow } from '../../lib/orders'
 import { supabase } from '../../lib/supabase'
 
 export function FarmDashboard() {
-  const { currentFarm } = useAuth()
+  const { currentFarm, signOut } = useAuth()
   const navigate = useNavigate()
   const [orders, setOrders] = useState<OrderRow[]>([])
   const [trend, setTrend] = useState<{ label: string; day: string; orders: number; today?: boolean }[]>([])
@@ -65,7 +65,14 @@ export function FarmDashboard() {
       <Header
         title={currentFarm.name}
         subtitle={currentFarm.location ?? formatDate(currentFarm.created_at)}
-        rightElement={<NotificationBell />}
+        rightElement={
+          <>
+            <button type="button" className="text-sm text-muted" onClick={() => void signOut()}>
+              로그아웃
+            </button>
+            <NotificationBell />
+          </>
+        }
       />
       <div className="px-4 py-4 md:px-6 max-w-5xl mx-auto space-y-6">
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">

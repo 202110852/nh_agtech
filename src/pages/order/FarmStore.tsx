@@ -1,18 +1,22 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { Header } from '../../components/layout/Header'
+import { useLoginSheet } from '../../components/auth/LoginSheet'
 import { ProductCard } from '../../components/shared/ProductCard'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
 import { PageSpinner } from '../../components/ui/Feedback'
 import { cartCount, getCart, setCart, type CartItem } from '../../lib/cart'
 import { formatPrice } from '../../lib/format'
+import { useAuth } from '../../lib/auth'
 import { supabase } from '../../lib/supabase'
 import type { Farm, Product } from '../../types/models'
 
 export function FarmStore() {
   const { farmSlug = '' } = useParams()
   const navigate = useNavigate()
+  const { user } = useAuth()
+  const { openLogin } = useLoginSheet()
   const [farm, setFarm] = useState<Farm | null>(null)
   const [products, setProducts] = useState<Product[]>([])
   const [cart, setCartState] = useState<CartItem[]>([])
@@ -69,9 +73,16 @@ export function FarmStore() {
         showBack
         backTo="/"
         rightElement={
-          <Link to="/me/orders" className="text-sm font-medium text-primary">
+          <button
+            type="button"
+            className="text-sm font-medium text-primary"
+            onClick={() => {
+              if (user) navigate('/me/orders')
+              else openLogin({ next: '/me/orders' })
+            }}
+          >
             내 주문
-          </Link>
+          </button>
         }
       />
       <div className="px-4 py-4 md:px-6 max-w-5xl mx-auto space-y-4">
@@ -102,7 +113,14 @@ export function FarmStore() {
               <p className="text-xs text-muted">{cartCount(cart)}개 선택</p>
               <p className="font-bold text-primary">{formatPrice(total)}</p>
             </div>
-            <Button size="lg" onClick={() => navigate(`/o/${farmSlug}/checkout`)}>
+            <Button
+              size="lg"
+              onClick={() => {
+                const path = `/o/${farmSlug}/checkout`
+                if (user) navigate(path)
+                else openLogin({ next: path })
+              }}
+            >
               주문하기
             </Button>
           </div>

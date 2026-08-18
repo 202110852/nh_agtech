@@ -1,9 +1,11 @@
 import type { ReactNode } from 'react'
+import { Loader2 } from 'lucide-react'
 
 export function PageSpinner({ label = '불러오는 중...' }: { label?: string }) {
   return (
-    <div className="min-h-dvh flex items-center justify-center text-sm text-muted">
-      {label}
+    <div className="min-h-dvh flex flex-col items-center justify-center gap-3 text-sm text-muted">
+      <Loader2 className="h-8 w-8 animate-spin text-primary" aria-hidden />
+      <p>{label}</p>
     </div>
   )
 }

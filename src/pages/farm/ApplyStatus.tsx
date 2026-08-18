@@ -6,10 +6,9 @@ import { PageSpinner } from '../../components/ui/Feedback'
 import { useAuth } from '../../lib/auth'
 
 export function FarmApplyStatus() {
-  const { loading, user, isFarmUser, latestApplication } = useAuth()
+  const { loading, isFarmUser, latestApplication } = useAuth()
 
   if (loading) return <PageSpinner />
-  if (!user) return <Navigate to="/login?next=/apply/status" replace />
   if (isFarmUser) return <Navigate to="/farm" replace />
   if (!latestApplication) return <Navigate to="/apply" replace />
 

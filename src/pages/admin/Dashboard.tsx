@@ -4,11 +4,13 @@ import { AppShell } from '../../components/layout/AppShell'
 import { Header } from '../../components/layout/Header'
 import { StatCard } from '../../components/ui/StatCard'
 import { adminNavItems } from '../../config/adminNav'
+import { useAuth } from '../../lib/auth'
 import { formatPrice } from '../../lib/format'
 import { supabase } from '../../lib/supabase'
 import type { Order } from '../../types/models'
 
 export function AdminDashboard() {
+  const { signOut } = useAuth()
   const [pendingApps, setPendingApps] = useState(0)
   const [pendingDeposits, setPendingDeposits] = useState(0)
   const [paidOrders, setPaidOrders] = useState(0)
@@ -33,7 +35,15 @@ export function AdminDashboard() {
 
   return (
     <AppShell navItems={adminNavItems} roleLabel="관리자" settingsPath="/admin/none">
-      <Header title="관리자" subtitle="주문 · 농가 전체 관리" />
+      <Header
+        title="관리자"
+        subtitle="주문 · 농가 전체 관리"
+        rightElement={
+          <button type="button" className="text-sm text-muted" onClick={() => void signOut()}>
+            로그아웃
+          </button>
+        }
+      />
       <div className="px-4 py-4 md:px-6 max-w-5xl mx-auto grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatCard label="입점 대기" value={`${pendingApps}건`} icon={Sprout} />
         <StatCard label="입금 대기" value={`${pendingDeposits}건`} icon={CreditCard} />

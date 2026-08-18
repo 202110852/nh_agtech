@@ -22,117 +22,215 @@ interface ReverseBody {
 
 type Body = SearchBody | ReverseBody
 
-interface GeoAddress {
-  roadAddress?: string
-  jibunAddress?: string
+interface KakaoRoadAddress {
+  address_name?: string
+  zone_no?: string
+  building_name?: string
   x?: string
   y?: string
-  addressElements?: { types?: string[]; longName?: string }[]
 }
 
-interface ReverseLand {
-  name?: string
-  number1?: string
-  number2?: string
-  addition0?: { type?: string; value?: string }
-  addition1?: { type?: string; value?: string }
-  addition2?: { type?: string; value?: string }
+interface KakaoAddressDocument {
+  address_name?: string
+  address_type?: string
+  x?: string
+  y?: string
+  address?: { address_name?: string } | null
+  road_address?: KakaoRoadAddress | null
 }
 
-interface ReverseResult {
-  name?: string
-  region?: {
-    area1?: { name?: string }
-    area2?: { name?: string }
-    area3?: { name?: string }
-    area4?: { name?: string }
-  }
-  land?: ReverseLand
+interface KakaoKeywordDocument {
+  place_name?: string
+  address_name?: string
+  road_address_name?: string
+  x?: string
+  y?: string
 }
 
-function naverHeaders() {
-  const id = Deno.env.get('NAVER_MAP_CLIENT_ID')
-  const secret = Deno.env.get('NAVER_MAP_CLIENT_SECRET')
-  if (!id || !secret) throw new Error('네이버 지도 API 키가 설정되지 않았습니다.')
+interface KakaoSearchMeta {
+  total_count?: number
+  pageable_count?: number
+  is_end?: boolean
+}
+
+interface KakaoCoordDocument {
+  address?: { address_name?: string; zone_no?: string }
+  road_address?: { address_name?: string; zone_no?: string; building_name?: string }
+}
+
+function kakaoHeaders() {
+  const key = Deno.env.get('KAKAO_REST_API_KEY')
+  if (!key) throw new Error('카카오 REST API 키(KAKAO_REST_API_KEY)가 설정되지 않았습니다.')
   return {
     Accept: 'application/json',
-    'X-NCP-APIGW-API-KEY-ID': id,
-    'X-NCP-APIGW-API-KEY': secret,
+    Authorization: `KakaoAK ${key}`,
   }
 }
 
-function postalCode(elements: GeoAddress['addressElements']) {
-  return elements?.find((item) => item.types?.includes('POSTAL_CODE'))?.longName ?? ''
+function normalizeKeyword(value: string) {
+  return value.trim().replace(/\s+/g, ' ')
 }
 
-function buildingName(elements: GeoAddress['addressElements']) {
-  return elements?.find((item) => item.types?.includes('BUILDING_NAME'))?.longName ?? ''
+function withSpaceBeforeNumber(value: string) {
+  return value.replace(/([가-힣A-Za-z]+)(\d[\d-]*)$/, '$1 $2')
 }
 
-function additionValue(land: ReverseLand | undefined, type: string) {
-  return [land?.addition0, land?.addition1, land?.addition2].find((item) => item?.type === type)?.value ?? ''
+function roadOnlyKeyword(value: string) {
+  return value.replace(/\s*\d[\d-]*$/, '').trim()
 }
 
-function formatRegion(result: ReverseResult) {
-  return [result.region?.area1?.name, result.region?.area2?.name, result.region?.area3?.name, result.region?.area4?.name]
-    .filter(Boolean)
-    .join(' ')
-}
+function buildSearchQueries(input: string) {
+  const normalized = normalizeKeyword(input)
+  const spaced = normalizeKeyword(withSpaceBeforeNumber(normalized))
+  const roadOnly = normalizeKeyword(roadOnlyKeyword(spaced))
+  const hasTrailingNumber = /\d[\d-]*$/.test(spaced)
+  const queries = [normalized]
 
-function formatReverseAddress(result: ReverseResult) {
-  const region = formatRegion(result)
-  if (result.name === 'roadaddr') {
-    const number = result.land?.number2 ? `${result.land.number1}-${result.land.number2}` : result.land?.number1
-    return [region, result.land?.name, number].filter(Boolean).join(' ')
+  if (spaced && spaced !== normalized) queries.push(spaced)
+  if (hasTrailingNumber && roadOnly.length >= 2 && roadOnly !== normalized && roadOnly !== spaced) {
+    queries.push(roadOnly)
   }
-  const number = result.land?.number2 ? `${result.land.number1}-${result.land.number2}` : result.land?.number1
-  return [region, number].filter(Boolean).join(' ')
+
+  return [...new Set(queries)]
+}
+
+function toCandidate(
+  address: string,
+  lat: number,
+  lng: number,
+  zonecode: string,
+  name?: string,
+): AddressCandidate | null {
+  if (!address || !Number.isFinite(lat) || !Number.isFinite(lng)) return null
+  return {
+    id: `addr:${lng},${lat},${address}`,
+    name: name?.trim() || address,
+    address,
+    zonecode,
+    lat,
+    lng,
+  }
+}
+
+function fromAddressDocument(doc: KakaoAddressDocument): AddressCandidate | null {
+  const road = doc.road_address
+  const address = road?.address_name || doc.address_name || doc.address?.address_name || ''
+  const lat = Number(road?.y ?? doc.y)
+  const lng = Number(road?.x ?? doc.x)
+  const zonecode = road?.zone_no ?? ''
+  const name = road?.building_name?.trim() || address
+  return toCandidate(address, lat, lng, zonecode, name)
+}
+
+function fromKeywordDocument(doc: KakaoKeywordDocument): AddressCandidate | null {
+  const address = doc.road_address_name || doc.address_name || ''
+  const lat = Number(doc.y)
+  const lng = Number(doc.x)
+  const name = doc.place_name?.trim() || address
+  return toCandidate(address, lat, lng, '', name)
+}
+
+async function fetchKakaoAddressPage(query: string, page: number) {
+  const url = new URL('https://dapi.kakao.com/v2/local/search/address.json')
+  url.searchParams.set('query', query)
+  url.searchParams.set('page', String(page))
+  url.searchParams.set('size', '15')
+  const response = await fetch(url, { headers: kakaoHeaders() })
+  if (!response.ok) throw new Error('주소 검색에 실패했습니다.')
+  return (await response.json()) as { documents?: KakaoAddressDocument[]; meta?: KakaoSearchMeta }
+}
+
+async function fetchKakaoKeywordPage(query: string, page: number) {
+  const url = new URL('https://dapi.kakao.com/v2/local/search/keyword.json')
+  url.searchParams.set('query', query)
+  url.searchParams.set('page', String(page))
+  url.searchParams.set('size', '15')
+  const response = await fetch(url, { headers: kakaoHeaders() })
+  if (!response.ok) return { documents: [], meta: { is_end: true } }
+  return (await response.json()) as { documents?: KakaoKeywordDocument[]; meta?: KakaoSearchMeta }
+}
+
+async function collectAddressSearch(query: string, seen: Set<string>, results: AddressCandidate[], maxResults: number) {
+  for (let page = 1; page <= 3; page += 1) {
+    const payload = await fetchKakaoAddressPage(query, page)
+    const pageItems = (payload.documents ?? [])
+      .map(fromAddressDocument)
+      .filter((item): item is AddressCandidate => Boolean(item))
+
+    for (const item of pageItems) {
+      if (seen.has(item.id)) continue
+      seen.add(item.id)
+      results.push(item)
+      if (results.length >= maxResults) return
+    }
+
+    if (payload.meta?.is_end || pageItems.length === 0) break
+  }
+}
+
+async function collectKeywordSearch(query: string, seen: Set<string>, results: AddressCandidate[], maxResults: number) {
+  for (let page = 1; page <= 2; page += 1) {
+    const payload = await fetchKakaoKeywordPage(query, page)
+    const pageItems = (payload.documents ?? [])
+      .map(fromKeywordDocument)
+      .filter((item): item is AddressCandidate => Boolean(item))
+
+    for (const item of pageItems) {
+      if (seen.has(item.id)) continue
+      seen.add(item.id)
+      results.push(item)
+      if (results.length >= maxResults) return
+    }
+
+    if (payload.meta?.is_end || pageItems.length === 0) break
+  }
 }
 
 async function searchAddresses(query: string): Promise<AddressCandidate[]> {
-  const url = new URL('https://maps.apigw.ntruss.com/map-geocode/v2/geocode')
-  url.searchParams.set('query', query)
-  url.searchParams.set('count', '15')
-  const response = await fetch(url, { headers: naverHeaders() })
-  if (!response.ok) throw new Error('주소 검색에 실패했습니다.')
-  const payload = (await response.json()) as { addresses?: GeoAddress[] }
-  return (payload.addresses ?? [])
-    .map((item) => {
-      const address = item.roadAddress || item.jibunAddress || ''
-      const name = buildingName(item.addressElements) || address
-      if (!address || !item.x || !item.y) return null
-      return {
-        id: `addr:${item.x},${item.y},${address}`,
-        name,
-        address,
-        zonecode: postalCode(item.addressElements),
-        lat: Number(item.y),
-        lng: Number(item.x),
-      } satisfies AddressCandidate
-    })
-    .filter((item): item is AddressCandidate => Boolean(item))
+  const maxResults = 45
+  const seen = new Set<string>()
+  const results: AddressCandidate[] = []
+  const searchQueries = buildSearchQueries(query)
+
+  for (const keyword of searchQueries) {
+    await collectAddressSearch(keyword, seen, results, maxResults)
+    if (results.length >= maxResults) break
+  }
+
+  if (results.length < 5) {
+    for (const keyword of searchQueries) {
+      await collectKeywordSearch(keyword, seen, results, maxResults)
+      if (results.length >= maxResults) break
+    }
+  }
+
+  return results
 }
 
 async function reverseAddress(lat: number, lng: number): Promise<AddressCandidate> {
-  const url = new URL('https://maps.apigw.ntruss.com/map-reversegeocode/v2/gc')
-  url.searchParams.set('coords', `${lng},${lat}`)
-  url.searchParams.set('output', 'json')
-  url.searchParams.set('orders', 'roadaddr,addr')
-  const response = await fetch(url, { headers: naverHeaders() })
+  const url = new URL('https://dapi.kakao.com/v2/local/geo/coord2address.json')
+  url.searchParams.set('x', String(lng))
+  url.searchParams.set('y', String(lat))
+  url.searchParams.set('input_coord', 'WGS84')
+  const response = await fetch(url, { headers: kakaoHeaders() })
   if (!response.ok) throw new Error('현재 위치 주소를 확인하지 못했습니다.')
-  const payload = (await response.json()) as { status?: { code?: number }; results?: ReverseResult[] }
-  if (payload.status?.code === 3 || !payload.results?.length) {
-    throw new Error('이 위치의 주소를 찾지 못했습니다. 주소 검색을 이용해 주세요.')
-  }
-  const picked = payload.results.find((item) => item.name === 'roadaddr') ?? payload.results[0]
-  const address = formatReverseAddress(picked)
+  const payload = (await response.json()) as { documents?: KakaoCoordDocument[] }
+  const doc = payload.documents?.[0]
+  if (!doc) throw new Error('이 위치의 주소를 찾지 못했습니다. 주소 검색을 이용해 주세요.')
+
+  const road = doc.road_address
+  const jibun = doc.address
+  const address = road?.address_name || jibun?.address_name || ''
   if (!address) throw new Error('이 위치의 주소를 찾지 못했습니다. 주소 검색을 이용해 주세요.')
-  const name = additionValue(picked.land, 'building') || address
+
+  const zonecode = road?.zone_no || jibun?.zone_no || ''
+  const name = road?.building_name?.trim() || address
+
   return {
     id: `coord:${lng},${lat}`,
     name,
     address,
-    zonecode: additionValue(picked.land, 'zipcode'),
+    zonecode,
     lat,
     lng,
   }

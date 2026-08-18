@@ -25,7 +25,7 @@ export function FarmApply() {
   })
 
   if (loading) return <PageSpinner />
-  if (!user) return <Navigate to="/login?next=/apply" replace />
+  if (!user) return <PageSpinner />
   if (isFarmUser) return <Navigate to="/farm" replace />
   if (latestApplication?.status === 'pending') return <Navigate to="/apply/status" replace />
 

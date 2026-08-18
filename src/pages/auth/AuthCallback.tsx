@@ -52,7 +52,7 @@ export function AuthCallback() {
         go(next)
         return
       }
-      go('/login')
+      go('/')
     }
 
     void finish()
@@ -62,8 +62,8 @@ export function AuthCallback() {
     return (
       <div className="min-h-dvh flex flex-col items-center justify-center gap-3 px-4">
         <ErrorText>{error}</ErrorText>
-        <Link to="/login" className="text-sm font-semibold text-primary">
-          로그인으로 돌아가기
+        <Link to="/" className="text-sm font-semibold text-primary">
+          홈으로 돌아가기
         </Link>
       </div>
     )

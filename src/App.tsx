@@ -1,5 +1,6 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { RequireAdmin, RequireAuth, RequireFarm } from './components/auth/Guards'
+import { LoginSheetProvider } from './components/auth/LoginSheet'
 import { Landing } from './pages/Landing'
 import { Login } from './pages/auth/Login'
 import { AuthCallback } from './pages/auth/AuthCallback'
@@ -26,7 +27,8 @@ import { AdminShipments } from './pages/admin/Shipments'
 export default function App() {
   return (
     <BrowserRouter>
-      <Routes>
+      <LoginSheetProvider>
+        <Routes>
         <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Login />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
@@ -63,8 +65,22 @@ export default function App() {
             </RequireAuth>
           }
         />
-        <Route path="/apply" element={<FarmApply />} />
-        <Route path="/apply/status" element={<FarmApplyStatus />} />
+        <Route
+          path="/apply"
+          element={
+            <RequireAuth>
+              <FarmApply />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/apply/status"
+          element={
+            <RequireAuth>
+              <FarmApplyStatus />
+            </RequireAuth>
+          }
+        />
 
         <Route
           path="/farm"
@@ -161,7 +177,8 @@ export default function App() {
         <Route path="/delivery" element={<Navigate to="/farm/delivery" replace />} />
         <Route path="/settings" element={<Navigate to="/farm/settings" replace />} />
         <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+        </Routes>
+      </LoginSheetProvider>
     </BrowserRouter>
   )
 }

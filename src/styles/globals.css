@@ -35,3 +35,16 @@ body {
   max-width: none !important;
   max-height: none !important;
 }
+
+@keyframes sheet-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+.animate-sheet-up {
+  animation: sheet-up 0.28s ease-out;
+}

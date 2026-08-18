@@ -97,6 +97,7 @@ export function Checkout() {
   const total = lines.reduce((sum, line) => sum + line.product.price * line.quantity, 0)
 
   if (loading) return <PageSpinner />
+  if (pending) return <PageSpinner label="주문을 처리하는 중..." />
   if (!farm) {
     return <div className="min-h-dvh flex items-center justify-center text-muted">농가를 찾을 수 없습니다</div>
   }
@@ -146,7 +147,6 @@ export function Checkout() {
             navigate(`/me/orders/${result.orderId}/complete`, { replace: true })
           } catch (err) {
             setError(err instanceof Error ? err.message : '주문에 실패했습니다.')
-          } finally {
             setPending(false)
           }
         }}
