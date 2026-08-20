@@ -1,0 +1,714 @@
+worker_processes auto;
+
+events {
+    worker_connections 4096;
+}
+
+http {
+    include       mime.types;
+    default_type  application/octet-stream;
+
+    server_names_hash_bucket_size 128;
+
+    access_log /opt/homebrew/var/log/nginx/access.log;
+    error_log  /opt/homebrew/var/log/nginx/error.log warn;
+
+    client_max_body_size 100m;
+
+    limit_req_zone $binary_remote_addr zone=antispam:10m rate=10r/s;
+    # Brute-force protection for auth endpoints (login/register).
+    limit_req_zone $binary_remote_addr zone=authlimit:10m rate=10r/m;
+    limit_req_status 429;
+
+    map $http_upgrade $connection_upgrade {
+        default upgrade;
+        ''      close;
+    }
+
+    server {
+        listen 80;
+        server_name
+            rladlgus.com
+            www.rladlgus.com
+            api.rladlgus.com
+            secure.rladlgus.com
+            api.secure.rladlgus.com
+            wenroidsofinsldkfnwelrnowietrf.rladlgus.com
+            api.wenroidsofinsldkfnwelrnowietrf.rladlgus.com
+            webos.lkim.me
+            api.webos.lkim.me
+            42time.lkim.me
+            tw.lkim.me
+            videohub.lkim.me
+            api.videohub.lkim.me
+            anonyig.lkim.me
+            api.anonyig.lkim.me
+            people.lkim.me
+            xn--2j1b000bod.com
+            s.lkim.me
+            webui.lkim.me
+            studio.webui.lkim.me
+            inpaint.webui.lkim.me
+            train.webui.lkim.me
+            create.webui.lkim.me;
+
+        location /.well-known/acme-challenge/ {
+            root /opt/homebrew/var/www/acme;
+        }
+
+        location / {
+            return 301 https://$host$request_uri;
+        }
+    }
+
+    server {
+        listen 443 ssl;
+        http2 on;
+        server_name rladlgus.com;
+
+        ssl_certificate     /opt/homebrew/etc/nginx/ssl/fullchain.pem;
+        ssl_certificate_key /opt/homebrew/etc/nginx/ssl/key.pem;
+
+        include /opt/homebrew/etc/nginx/security.conf;
+
+        location / {
+            proxy_pass http://192.168.1.2:4432;
+            proxy_http_version 1.1;
+            proxy_set_header Host 192.168.1.2:4432;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto https;
+        }
+    }
+
+    server {
+        listen 443 ssl;
+        http2 on;
+        server_name www.rladlgus.com;
+
+        ssl_certificate     /opt/homebrew/etc/nginx/ssl/fullchain.pem;
+        ssl_certificate_key /opt/homebrew/etc/nginx/ssl/key.pem;
+
+        include /opt/homebrew/etc/nginx/security.conf;
+
+        location / {
+            proxy_pass http://192.168.1.2:4433;
+            proxy_http_version 1.1;
+            proxy_set_header Host 192.168.1.2:4433;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto https;
+        }
+    }
+
+    server {
+        listen 443 ssl;
+        http2 on;
+        server_name api.rladlgus.com;
+
+        ssl_certificate     /opt/homebrew/etc/nginx/ssl/fullchain.pem;
+        ssl_certificate_key /opt/homebrew/etc/nginx/ssl/key.pem;
+
+        include /opt/homebrew/etc/nginx/security.conf;
+
+        location / {
+            proxy_pass http://192.168.1.2:5000;
+            proxy_http_version 1.1;
+            proxy_set_header Host 192.168.1.2:5000;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto https;
+        }
+    }
+
+    server {
+        listen 443 ssl;
+        http2 on;
+        server_name secure.rladlgus.com;
+
+        ssl_certificate     /opt/homebrew/etc/nginx/ssl/fullchain.pem;
+        ssl_certificate_key /opt/homebrew/etc/nginx/ssl/key.pem;
+
+        include /opt/homebrew/etc/nginx/security.conf;
+
+        location / {
+            proxy_pass http://192.168.1.2:6000;
+            proxy_http_version 1.1;
+            proxy_set_header Host 192.168.1.2:6000;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto https;
+        }
+    }
+
+    server {
+        listen 443 ssl;
+        http2 on;
+        server_name api.secure.rladlgus.com;
+
+        ssl_certificate     /opt/homebrew/etc/nginx/ssl/fullchain.pem;
+        ssl_certificate_key /opt/homebrew/etc/nginx/ssl/key.pem;
+
+        include /opt/homebrew/etc/nginx/security.conf;
+
+        location / {
+            proxy_pass http://192.168.1.2:6001;
+            proxy_http_version 1.1;
+            proxy_set_header Host 192.168.1.2:6001;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto https;
+        }
+    }
+
+    server {
+        listen 443 ssl;
+        http2 on;
+        server_name wenroidsofinsldkfnwelrnowietrf.rladlgus.com;
+
+        ssl_certificate     /opt/homebrew/etc/nginx/ssl/fullchain.pem;
+        ssl_certificate_key /opt/homebrew/etc/nginx/ssl/key.pem;
+
+        include /opt/homebrew/etc/nginx/security.conf;
+
+        location / {
+            proxy_pass http://192.168.1.2:7000;
+            proxy_http_version 1.1;
+            proxy_set_header Host 192.168.1.2:7000;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto https;
+        }
+    }
+
+    server {
+        listen 443 ssl;
+        http2 on;
+        server_name api.wenroidsofinsldkfnwelrnowietrf.rladlgus.com;
+
+        ssl_certificate     /opt/homebrew/etc/nginx/ssl/fullchain.pem;
+        ssl_certificate_key /opt/homebrew/etc/nginx/ssl/key.pem;
+
+        include /opt/homebrew/etc/nginx/security.conf;
+
+        location / {
+            proxy_pass http://192.168.1.2:7001;
+            proxy_http_version 1.1;
+            proxy_set_header Host 192.168.1.2:7001;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto https;
+        }
+    }
+
+    server {
+        listen 443 ssl;
+        http2 on;
+        server_name webos.lkim.me;
+
+        ssl_certificate     /Users/lkim/letsencrypt/config/live/webos.lkim.me/fullchain.pem;
+        ssl_certificate_key /Users/lkim/letsencrypt/config/live/webos.lkim.me/privkey.pem;
+
+        # Vite dev server sends many parallel module requests;
+        # rate limiting causes 503 on page load — skip it here.
+
+        # MCP server (Streamable HTTP) — WebOS tools for AI clients.
+        # Auth is pass-through: the client's Bearer token is forwarded to the API.
+        location /mcp {
+            proxy_pass http://127.0.0.1:4452;
+            proxy_http_version 1.1;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto https;
+            proxy_set_header Connection '';
+            # SSE streaming: don't buffer, allow long-lived responses.
+            proxy_buffering off;
+            chunked_transfer_encoding on;
+            proxy_read_timeout 3600s;
+            proxy_send_timeout 3600s;
+        }
+
+        location / {
+            proxy_pass http://127.0.0.1:4450;
+            proxy_http_version 1.1;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto https;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection $connection_upgrade;
+        }
+    }
+
+    server {
+        listen 443 ssl;
+        http2 on;
+        server_name api.webos.lkim.me;
+
+        ssl_certificate     /Users/lkim/letsencrypt/config/live/webos.lkim.me/fullchain.pem;
+        ssl_certificate_key /Users/lkim/letsencrypt/config/live/webos.lkim.me/privkey.pem;
+
+        include /opt/homebrew/etc/nginx/security.conf;
+
+        client_max_body_size 500m;
+        # A 500MB upload from a phone can pause between reads; the 60s default
+        # would abort a slow-but-alive connection midway.
+        client_body_timeout 300s;
+
+        error_page 413 = @too_large;
+
+        # Rate-limit auth endpoints against brute force (10/min + small burst).
+        location = /api/v1/auth/login {
+            limit_req zone=authlimit burst=5 nodelay;
+            proxy_pass http://[::1]:4451;
+            proxy_http_version 1.1;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto https;
+        }
+        location = /api/v1/auth/register {
+            limit_req zone=authlimit burst=3 nodelay;
+            proxy_pass http://[::1]:4451;
+            proxy_http_version 1.1;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto https;
+        }
+
+        # Phone agent doorbell — the socket is silent between requests, so the
+        # default 120s read cap would drop it every two minutes and leave the
+        # phone in a permanent reconnect loop.
+        location /api/v1/mobile-agent/ws {
+            proxy_pass http://[::1]:4451;
+            proxy_http_version 1.1;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto https;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection $connection_upgrade;
+            proxy_buffering off;
+            proxy_read_timeout 86400s;
+            proxy_send_timeout 86400s;
+        }
+
+        # Live media relay — a viewer's socket can idle between chunks and the
+        # default 120s read cap would drop it mid-broadcast.
+        location /api/v1/streams/ws {
+            proxy_pass http://[::1]:4451;
+            proxy_http_version 1.1;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto https;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection $connection_upgrade;
+            proxy_buffering off;
+            proxy_read_timeout 86400s;
+            proxy_send_timeout 86400s;
+        }
+
+        # Interactive SSH PTY WebSocket — long-lived, unbuffered, no idle cap so
+        # the terminal stays open. (The default location below caps reads at 120s.)
+        location /api/v1/sshterm/ws {
+            proxy_pass http://[::1]:4451;
+            proxy_http_version 1.1;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto https;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection $connection_upgrade;
+            proxy_buffering off;
+            proxy_read_timeout 86400s;
+            proxy_send_timeout 86400s;
+        }
+
+        location / {
+            proxy_pass http://[::1]:4451;
+            proxy_http_version 1.1;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto https;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection $connection_upgrade;
+
+            proxy_read_timeout 120s;
+            proxy_send_timeout 120s;
+
+            proxy_intercept_errors on;
+            # nginx drops inherited error_page entries as soon as a level
+            # defines its own, so the server-level 413 handler has to be
+            # repeated here or an oversize upload falls back to nginx's default
+            # HTML page — which carries no CORS header, so the browser reports a
+            # bare "Network Error" instead of the size limit.
+            error_page 413 = @too_large;
+            error_page 502 503 504 = @cors_error;
+        }
+
+        location @cors_error {
+            add_header Access-Control-Allow-Origin "https://webos.lkim.me" always;
+            add_header Access-Control-Allow-Credentials "true" always;
+            add_header Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS, PATCH" always;
+            add_header Access-Control-Allow-Headers "Authorization, Content-Type" always;
+            return 502 '{"detail":"Server temporarily unavailable"}';
+        }
+
+        location @too_large {
+            add_header Access-Control-Allow-Origin "https://webos.lkim.me" always;
+            add_header Access-Control-Allow-Credentials "true" always;
+            add_header Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS, PATCH" always;
+            add_header Access-Control-Allow-Headers "Authorization, Content-Type" always;
+            return 413 '{"detail":"File too large (max 500MB)"}';
+        }
+    }
+
+    server {
+        listen 443 ssl;
+        http2 on;
+        server_name videohub.lkim.me;
+
+        ssl_certificate     /Users/lkim/letsencrypt/config/live/videohub.lkim.me/fullchain.pem;
+        ssl_certificate_key /Users/lkim/letsencrypt/config/live/videohub.lkim.me/privkey.pem;
+
+        location /api/ {
+            proxy_pass http://127.0.0.1:8000;
+            proxy_http_version 1.1;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto https;
+        }
+
+        location /uploads/ {
+            proxy_pass http://127.0.0.1:8000;
+            proxy_http_version 1.1;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto https;
+        }
+
+        location /ws/ {
+            proxy_pass http://127.0.0.1:8000;
+            proxy_http_version 1.1;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto https;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection $connection_upgrade;
+        }
+
+        location /live/ {
+            proxy_pass http://127.0.0.1:8888;
+            proxy_http_version 1.1;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto https;
+        }
+
+        location / {
+            proxy_pass http://127.0.0.1:5173;
+            proxy_http_version 1.1;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto https;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection $connection_upgrade;
+        }
+    }
+
+    server {
+        listen 443 ssl;
+        http2 on;
+        server_name api.videohub.lkim.me;
+
+        ssl_certificate     /Users/lkim/letsencrypt/config/live/videohub.lkim.me/fullchain.pem;
+        ssl_certificate_key /Users/lkim/letsencrypt/config/live/videohub.lkim.me/privkey.pem;
+
+        location / {
+            proxy_pass http://127.0.0.1:8000;
+            proxy_http_version 1.1;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto https;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection $connection_upgrade;
+        }
+
+        location /live/ {
+            proxy_pass http://127.0.0.1:8888;
+            proxy_http_version 1.1;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto https;
+        }
+    }
+
+    server {
+        listen 443 ssl;
+        http2 on;
+        server_name 42time.lkim.me;
+
+        ssl_certificate     /Users/lkim/letsencrypt/config/live/42time.lkim.me/fullchain.pem;
+        ssl_certificate_key /Users/lkim/letsencrypt/config/live/42time.lkim.me/privkey.pem;
+
+        include /opt/homebrew/etc/nginx/security.conf;
+
+        location / {
+            proxy_pass http://127.0.0.1:4460;
+            proxy_http_version 1.1;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto https;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection $connection_upgrade;
+        }
+    }
+    # ---- tw.lkim.me — Twitter video ranking (static SPA + /api FastAPI on :8031) ----
+    server {
+        listen 443 ssl;
+        http2 on;
+        server_name tw.lkim.me;
+
+        ssl_certificate     /Users/lkim/letsencrypt/config/live/tw.lkim.me/fullchain.pem;
+        ssl_certificate_key /Users/lkim/letsencrypt/config/live/tw.lkim.me/privkey.pem;
+
+        include /opt/homebrew/etc/nginx/security.conf;
+
+        root /opt/homebrew/var/www/tw/dist;
+        index index.html;
+
+        location /api/ {
+            proxy_pass http://127.0.0.1:8031;
+            proxy_http_version 1.1;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto https;
+            proxy_read_timeout 60s;
+        }
+
+        location /assets/ {
+            expires 1y;
+            add_header Cache-Control "public, immutable";
+            try_files $uri =404;
+        }
+
+        location / {
+            try_files $uri $uri/ /index.html;
+        }
+    }
+
+    # ---- AnonyIG frontend (static SPA) ----
+    server {
+        listen 443 ssl;
+        http2 on;
+        server_name anonyig.lkim.me;
+
+        ssl_certificate     /Users/lkim/letsencrypt/config/live/anonyig.lkim.me/fullchain.pem;
+        ssl_certificate_key /Users/lkim/letsencrypt/config/live/anonyig.lkim.me/privkey.pem;
+
+        root /opt/homebrew/var/www/anonyig/dist;
+        index index.html;
+
+        location /assets/ {
+            expires 1y;
+            add_header Cache-Control "public, immutable";
+            try_files $uri =404;
+        }
+
+        location / {
+            try_files $uri $uri/ /index.html;
+        }
+    }
+
+    # ---- AnonyIG backend API (FastAPI on :8011) ----
+    server {
+        listen 443 ssl;
+        http2 on;
+        server_name api.anonyig.lkim.me;
+
+        ssl_certificate     /Users/lkim/letsencrypt/config/live/anonyig.lkim.me/fullchain.pem;
+        ssl_certificate_key /Users/lkim/letsencrypt/config/live/anonyig.lkim.me/privkey.pem;
+
+        client_max_body_size 8m;
+
+        location / {
+            proxy_pass http://127.0.0.1:8011;
+            proxy_http_version 1.1;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto https;
+            # /api/stream (ffmpeg) and /api/media stream large bodies.
+            proxy_buffering off;
+            proxy_request_buffering off;
+            proxy_read_timeout 3600s;
+            proxy_send_timeout 3600s;
+        }
+    }
+    server {
+        listen 443 ssl;
+        http2 on;
+        server_name people.lkim.me;
+        ssl_certificate     /Users/lkim/letsencrypt/config/live/people.lkim.me/fullchain.pem;
+        ssl_certificate_key /Users/lkim/letsencrypt/config/live/people.lkim.me/privkey.pem;
+        include /opt/homebrew/etc/nginx/security.conf;
+        root /opt/homebrew/var/www/people/dist;
+        index index.html;
+        location /assets/ {
+            expires 1y;
+            add_header Cache-Control "public, immutable";
+            try_files $uri =404;
+        }
+        location / {
+            try_files $uri $uri/ /index.html;
+        }
+    }
+    server {
+        listen 443 ssl;
+        http2 on;
+        server_name xn--2j1b000bod.com;
+        ssl_certificate     /Users/lkim/letsencrypt/config/live/xn--2j1b000bod.com/fullchain.pem;
+        ssl_certificate_key /Users/lkim/letsencrypt/config/live/xn--2j1b000bod.com/privkey.pem;
+        include /opt/homebrew/etc/nginx/security.conf;
+        root /opt/homebrew/var/www/people/dist;
+        index index.html;
+        location /assets/ {
+            expires 1y;
+            add_header Cache-Control "public, immutable";
+            try_files $uri =404;
+        }
+        location / {
+            try_files $uri $uri/ /index.html;
+        }
+    }
+
+    # ===================================================================
+    # AI PC reverse proxy (내부 IP: 192.168.1.2)
+    # 인증서: /Users/lkim/letsencrypt/config/live/webui.lkim.me/ (4개 도메인 SAN)
+    # ===================================================================
+
+    # ── webui.lkim.me: 대시보드 ──
+    server {
+        listen 443 ssl;
+        server_name webui.lkim.me;
+
+        ssl_certificate     /Users/lkim/letsencrypt/config/live/webui.lkim.me/fullchain.pem;
+        ssl_certificate_key /Users/lkim/letsencrypt/config/live/webui.lkim.me/privkey.pem;
+
+        location / {
+            proxy_pass http://192.168.1.2:8910/;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-Proto https;
+        }
+    }
+
+    # ── studio.webui.lkim.me: 이미지 생성 스튜디오 ──
+    server {
+        listen 443 ssl;
+        server_name studio.webui.lkim.me;
+
+        ssl_certificate     /Users/lkim/letsencrypt/config/live/webui.lkim.me/fullchain.pem;
+        ssl_certificate_key /Users/lkim/letsencrypt/config/live/webui.lkim.me/privkey.pem;
+
+        client_max_body_size 80m;
+        proxy_read_timeout   300s;
+
+        location / {
+            proxy_pass http://192.168.1.2:8920/;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-Proto https;
+        }
+
+        # ComfyUI WebSocket (진행률 표시)
+        location /ws {
+            proxy_pass http://192.168.1.2:8188/ws;
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection "upgrade";
+            proxy_read_timeout 3600s;
+        }
+    }
+
+    # ── inpaint.webui.lkim.me: 얼굴 복원 ──
+    server {
+        listen 443 ssl;
+        server_name inpaint.webui.lkim.me;
+
+        ssl_certificate     /Users/lkim/letsencrypt/config/live/webui.lkim.me/fullchain.pem;
+        ssl_certificate_key /Users/lkim/letsencrypt/config/live/webui.lkim.me/privkey.pem;
+
+        client_max_body_size 80m;
+        proxy_read_timeout   300s;
+
+        location / {
+            proxy_pass http://192.168.1.2:8921/;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-Proto https;
+        }
+
+        # ComfyUI WebSocket (진행률 표시)
+        location /ws {
+            proxy_pass http://192.168.1.2:8188/ws;
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection "upgrade";
+            proxy_read_timeout 3600s;
+        }
+    }
+
+    # ── train.webui.lkim.me: 학습 UI ──
+    server {
+        listen 443 ssl;
+        server_name train.webui.lkim.me;
+
+        ssl_certificate     /Users/lkim/letsencrypt/config/live/webui.lkim.me/fullchain.pem;
+        ssl_certificate_key /Users/lkim/letsencrypt/config/live/webui.lkim.me/privkey.pem;
+
+        location / {
+            proxy_pass http://192.168.1.2:8930/;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-Proto https;
+        }
+    }
+
+    # ── create.webui.lkim.me: 로컬 8950 ──
+    server {
+        listen 443 ssl;
+        server_name create.webui.lkim.me;
+
+        ssl_certificate     /Users/lkim/letsencrypt/config/live/webui.lkim.me/fullchain.pem;
+        ssl_certificate_key /Users/lkim/letsencrypt/config/live/webui.lkim.me/privkey.pem;
+
+        client_max_body_size 80m;
+        proxy_read_timeout   300s;
+
+        location / {
+            proxy_pass http://192.168.1.2:8950/;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-Proto https;
+
+            # WebSocket 지원
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection "upgrade";
+        }
+    }
+}
